@@ -3,13 +3,34 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
+import polars as pl
 from bdd_contracts.artifact import ArtifactManifest, ParserInfo, SourceInfo
 
 CHUNK = 1024 * 1024
+
+
+def parser_config_hash(*, parser_name: str, config: dict) -> str:
+    """SHA-256 of parser name + pinned config. Binds manifest to its reader."""
+    payload = json.dumps(
+        {"parser": parser_name, **config},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def parser_info(name: str, config: dict) -> ParserInfo:
+    """Parser identity: library version plus a config hash for reproducibility."""
+    return ParserInfo(
+        name=name,
+        version=pl.__version__,
+        config_hash=parser_config_hash(parser_name=name, config=config),
+    )
 
 
 def sha256_file(path: Path) -> str:
@@ -43,7 +64,7 @@ def build_manifest(
     raw_store: Path,
     source: SourceInfo | None = None,
     parser_name: str = "polars",
-    parser_version: str = "",
+    parser_config: dict | None = None,
     media_type: str = "text/csv",
     release_date: str | None = None,
 ) -> ArtifactManifest:
@@ -56,7 +77,7 @@ def build_manifest(
         sha256=sha256_file(raw_path),
         media_type=media_type,
         byte_size=raw_path.stat().st_size,
-        parser=ParserInfo(name=parser_name, version=parser_version, config_hash=""),
+        parser=parser_info(parser_name, parser_config or {}),
         release_date=release_date,
         raw_uri=str(raw_path),
     )

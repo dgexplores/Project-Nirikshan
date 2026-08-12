@@ -2,10 +2,55 @@
 
 from __future__ import annotations
 
-import polars as pl
-from bdd_contracts.profile import ColumnProfile, DatasetProfile, QualityObservation
+import re
 
-PROFILE_VERSION = "0.1.0"
+import polars as pl
+from bdd_contracts.profile import (
+    PII_TYPE,
+    ColumnProfile,
+    DatasetProfile,
+    Distribution,
+    PiiHint,
+    QualityObservation,
+)
+
+PROFILE_VERSION = "0.1.1"
+
+# Value-shape patterns. Aadhaar requires 4-4-4 grouping so a bare run of
+# digits reads as a bank account, not an Aadhaar.
+_VALUE_PATTERNS: dict[str, re.Pattern[str]] = {
+    "aadhaar": re.compile(r"^[2-9]\d{3}[ -]\d{4}[ -]\d{4}$"),
+    "pan": re.compile(r"^[A-Z]{5}\d{4}[A-Z]$"),
+    "mobile_phone": re.compile(r"^(?:\+91[ -]?)?[6-9]\d{9}$"),
+    "email": re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$"),
+    "bank_account": re.compile(r"^\d{9,18}$"),
+    "passport": re.compile(r"^[A-Z]\d{7}$"),
+    "voter_id": re.compile(r"^[A-Z]{3}\d{7}$"),
+}
+
+# Column-name signals. Keyed to a PiiHint type; value regex only used as a
+# confirmation when the name alone is ambiguous.
+_NAME_SIGNALS: dict[str, tuple[PII_TYPE, re.Pattern[str] | None]] = {
+    "aadhaar": ("aadhaar", None),
+    "aadhar": ("aadhaar", None),
+    "uid": ("aadhaar", None),
+    "pan": ("pan", None),
+    "pan_no": ("pan", None),
+    "pan_number": ("pan", None),
+    "mobile": ("mobile_phone", None),
+    "phone": ("mobile_phone", None),
+    "phone_no": ("mobile_phone", None),
+    "mobile_no": ("mobile_phone", None),
+    "email": ("email", None),
+    "e_mail": ("email", None),
+    "mail": ("email", None),
+    "account_no": ("bank_account", None),
+    "bank_account": ("bank_account", None),
+    "bank_ac": ("bank_account", None),
+    "passport": ("passport", None),
+    "epic": ("voter_id", None),
+    "voter": ("voter_id", None),
+}
 
 
 def _top_values(series: pl.Series, limit: int = 5) -> list[dict]:
@@ -20,6 +65,64 @@ def _top_values(series: pl.Series, limit: int = 5) -> list[dict]:
 
 def _sample_values(series: pl.Series, limit: int = 5) -> list[str]:
     return [str(v) for v in series.drop_nulls().unique().head(limit).to_list()]
+
+
+def _distribution(numeric: pl.Series) -> Distribution | None:
+    if len(numeric) == 0:
+        return None
+    quantiles = numeric.quantile([0.05, 0.25, 0.50, 0.75, 0.95])
+    return Distribution(
+        p5=float(quantiles[0]) if quantiles is not None else None,
+        p25=float(quantiles[1]) if quantiles is not None else None,
+        p50=float(quantiles[2]) if quantiles is not None else None,
+        p75=float(quantiles[3]) if quantiles is not None else None,
+        p95=float(quantiles[4]) if quantiles is not None else None,
+        skewness=float(numeric.skew()) if len(numeric) > 1 else None,
+    )
+
+
+def _pii_hints(name: str, series: pl.Series) -> list[PiiHint]:
+    lower = name.strip().lower().replace(" ", "_")
+    hints: list[PiiHint] = []
+
+    hint_type, confirm = _NAME_SIGNALS.get(lower, (None, None))
+    non_null = series.drop_nulls()
+    if hint_type is None or non_null.is_empty():
+        return hints
+    if confirm is not None:
+        matches = [v for v in non_null.to_list() if confirm.match(str(v))]
+        if not matches:
+            return hints
+        return [
+            PiiHint(
+                hint_type=hint_type,
+                column=name,
+                matched_values=len(matches),
+                sample_matches=list(dict.fromkeys(map(str, matches)))[:3],
+            )
+        ]
+
+    # Name signals for identifier-like fields (aadhaar, pan, ...) count all
+    # non-null values as candidate columns pending value-shape confirmation.
+    pattern = _VALUE_PATTERNS.get(hint_type)
+    if pattern is not None:
+        matches = [v for v in non_null.to_list() if pattern.match(str(v))]
+        if matches:
+            return [
+                PiiHint(
+                    hint_type=hint_type,
+                    column=name,
+                    matched_values=len(matches),
+                    sample_matches=list(dict.fromkeys(map(str, matches)))[:3],
+                )
+            ]
+    return [
+        PiiHint(
+            hint_type=hint_type,
+            column=name,
+            matched_values=len(non_null),
+        )
+    ]
 
 
 def _column_profile(name: str, series: pl.Series) -> ColumnProfile:
@@ -40,6 +143,8 @@ def _column_profile(name: str, series: pl.Series) -> ColumnProfile:
         max_value=float(numeric.max()) if len(numeric) else None,
         mean=round(float(numeric.mean()), 4) if len(numeric) else None,
         stddev=round(float(numeric.std()), 4) if len(numeric) > 1 else None,
+        distribution=_distribution(numeric),
+        pii_hints=_pii_hints(name, series),
         top_values=_top_values(non_null),
         sample_values=_sample_values(non_null),
     )

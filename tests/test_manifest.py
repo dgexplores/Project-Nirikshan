@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from bdd_ingestion.manifest import build_manifest, sha256_file
+import polars as pl
+from bdd_ingestion.manifest import build_manifest, parser_config_hash, sha256_file
 
 SAMPLED = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
 
@@ -38,3 +39,28 @@ def test_freeze_copy_never_overwrites(tmp_path: Path) -> None:
     src.write_text("a\n2\n", encoding="utf-8")
     third = build_manifest(artifact_id="c", src=src, raw_store=raw).raw_uri
     assert third != second
+
+
+def test_parser_config_hash_is_deterministic() -> None:
+    assert parser_config_hash(parser_name="polars_csv", config={"encoding": "utf-8"}) == (
+        parser_config_hash(parser_name="polars_csv", config={"encoding": "utf-8"})
+    )
+    assert parser_config_hash(parser_name="polars_csv", config={"encoding": "utf-8"}) != (
+        parser_config_hash(parser_name="polars_csv", config={"encoding": "latin-1"})
+    )
+    assert len(parser_config_hash(parser_name="x", config={})) == 64
+
+
+def test_manifest_parser_version_and_hash_populated(tmp_path: Path) -> None:
+    src = tmp_path / "d.csv"
+    src.write_text("a\n1\n", encoding="utf-8")
+    m = build_manifest(
+        artifact_id="art_v",
+        src=src,
+        raw_store=tmp_path / "raw",
+        parser_name="polars_csv",
+        parser_config={"encoding": "utf-8-sig"},
+    )
+    assert m.parser.version == pl.__version__
+    assert len(m.parser.config_hash) == 64
+    assert m.parser.config_hash != ""
