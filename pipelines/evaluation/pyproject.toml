@@ -1,0 +1,14 @@
+[project]
+name = "bdd-evaluation"
+version = "0.1.0"
+description = "BDD blind benchmark runner"
+requires-python = ">=3.12"
+dependencies = [
+    "bdd-contracts",
+    "bdd-ingestion",
+    "bdd-forensics",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

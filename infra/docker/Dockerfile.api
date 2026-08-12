@@ -1,0 +1,20 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir uv
+
+COPY pyproject.toml uv.lock* ./
+COPY packages/contracts/pyproject.toml packages/contracts/pyproject.toml
+COPY packages/contracts/src packages/contracts/src
+COPY pipelines/ingestion/pyproject.toml pipelines/ingestion/pyproject.toml
+COPY pipelines/ingestion/src pipelines/ingestion/src
+COPY pipelines/forensics/pyproject.toml pipelines/forensics/pyproject.toml
+COPY pipelines/forensics/src pipelines/forensics/src
+COPY services/api/pyproject.toml services/api/pyproject.toml
+COPY services/api/src services/api/src
+
+RUN uv sync --frozen --no-dev
+
+EXPOSE 8000
+CMD ["uv", "run", "--no-dev", "uvicorn", "bdd_api.main:app", "--host", "0.0.0.0", "--port", "8000"]

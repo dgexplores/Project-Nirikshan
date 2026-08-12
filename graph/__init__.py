@@ -1,0 +1,1 @@
+"""Evidence graph adapter (NetworkX) - Sprint 3. Contract envelope first."""

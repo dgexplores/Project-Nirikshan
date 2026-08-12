@@ -1,0 +1,13 @@
+[project]
+name = "bdd-ingestion"
+version = "0.1.0"
+description = "BDD ingestion pipeline"
+requires-python = ">=3.12"
+dependencies = [
+    "bdd-contracts",
+    "polars>=1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

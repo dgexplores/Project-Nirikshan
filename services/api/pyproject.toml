@@ -1,0 +1,17 @@
+[project]
+name = "bdd-api"
+version = "0.1.0"
+description = "BDD FastAPI service"
+requires-python = ">=3.12"
+dependencies = [
+    "bdd-contracts",
+    "bdd-ingestion",
+    "bdd-forensics",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.32",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
