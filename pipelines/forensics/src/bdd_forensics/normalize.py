@@ -43,6 +43,16 @@ class UnitNormalizationError(ValueError):
     """Raised for an unknown unit or a non-numeric magnitude."""
 
 
+def unit_scale(unit_name: str) -> float | None:
+    """Canonical scale factor for a recognized Indian measure unit.
+
+    Returns None for an unrecognized label. Used by drift detection to
+    decide whether a unit label change is an alias (same scale), a scale
+    change (comparable after scaling) or a base change (not comparable).
+    """
+    return _INDIC_UNITS.get(unit_name.strip().lower())
+
+
 def normalize_indic_unit(raw_value: float, unit_name: str) -> UnitNorm:
     """Scale a value expressed in Indian units to base count/INR.
 

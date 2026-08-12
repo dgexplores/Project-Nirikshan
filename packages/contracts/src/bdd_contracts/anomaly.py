@@ -74,4 +74,10 @@ class DriftFinding(BaseModel):
     )
     evidence: list[str] = Field(default_factory=list)
     severity: SeverityLevel = "info"
+    semantic_impact: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="0-1 impact on comparability; derived from the drifted dimension, not string diff",
+    )
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))

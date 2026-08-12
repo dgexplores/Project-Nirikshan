@@ -112,5 +112,24 @@ docker compose -f infra/docker/compose.yml up
 
 ## Status
 
-Sprint 1 in progress: repository foundation, contract schemas, ingestion
-engine, profiler. No performance claims until measured.
+Sprint 1 complete; Sprint 2/3 engines in progress. All checks are
+reproducible and deterministic; no performance claims until measured.
+
+### Done
+
+| Area | What works |
+|---|---|
+| Ingestion (Sprint 1) | Immutable artifact capture: SHA-256 hashing, freeze-without-overwrite raw store, parser-version + config-hash tracking, CSV/TSV/XLSX/JSON/JSONL/Parquet parsers with encoding fallback, CLI (`python -m bdd_ingestion.cli ingest ...`). |
+| Profiling (Sprint 1) | Column stats (nulls, uniqueness, min/max/mean/stddev), quantile distribution + skewness, top/sample values, candidate keys, duplicate rows, quality observations (DUPLICATE_ROWS, COLUMN_ALL_NULL, COLUMN_CONSTANT, ZERO_MIN_NUMERIC...), PII/identifier hints by column name and value shape (Aadhaar, PAN, mobile, email, bank account, passport, voter ID). |
+| API (Sprint 1) | FastAPI: `GET /health`, `POST /artifacts/ingest`, `GET /artifacts/{id}/manifest`, `GET /artifacts/{id}/profile`. In-memory registry for now; persistence lands with the Postgres schema. |
+| Semantic foundations (Sprint 2) | Indian unit normalization (thousand/lakh/crore -> count or INR), fiscal-year label parsing (`FY 2024-25`), dataset-pair comparability gates (geography, fiscal year, unit/scale, definition), and deterministic **semantic drift detection** on DefinitionCard pairs scored by semantic impact (denominator, unit, definition, scope). |
+| Forensic engines (Sprint 3) | Statistical anomaly detection (z-score, IQR, year-over-year), cross-source contradiction reconciliation (`conflict` / `explainable` / `not_comparable` with comparability gates and alignment tests). |
+| Governance (Sprint 0) | Source register (`data/source-register.csv`), blinded CAG benchmark protocol (`docs/benchmark-protocol.md`), restricted case registry (`data/benchmark-restricted/`). |
+
+### Next up
+
+- Evidence lineage graph (`graph/`) - NetworkX adapter tracing finding -> rule -> aggregate -> raw evidence (spec 10.2, engine 9).
+- False-consensus detection (spec 10.3, engine 10) - evidence diversity instead of raw source count.
+- Schema-mapping and geo-resolution engines (spec 9, engines 3/5).
+- Freeze real public fixtures + manifests (`data/manifests/` and `data/fixtures/public/` are currently empty).
+- Postgres persistence, RAG + Ask Detective (Sprint 4), blind evaluation runner (Sprint 5), web dashboard (`apps/web/`).
