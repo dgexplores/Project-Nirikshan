@@ -2,6 +2,7 @@
 services, pipelines and storage. Imported by all components.
 """
 
+from bdd_contracts.anomaly import AnomalyFinding, ContradictionFinding, DriftFinding
 from bdd_contracts.artifact import ArtifactManifest, ParserInfo, SourceInfo
 from bdd_contracts.finding import Claim, EvidenceRef, Finding
 from bdd_contracts.observation import ObservationRecord
@@ -22,12 +23,15 @@ from bdd_contracts.semantic import (
 )
 
 __all__ = [
+    "AnomalyFinding",
     "ArtifactManifest",
     "Claim",
     "ColumnProfile",
+    "ContradictionFinding",
     "DatasetProfile",
     "DefinitionCard",
     "Distribution",
+    "DriftFinding",
     "EvidenceRef",
     "Finding",
     "GeoResolution",
