@@ -167,10 +167,8 @@ observability gap. No performance claims until measured.
 
 ## Status
 
-Launch-ready v1.0: ingestion, profiling, fitness scoring, semantic engines,
-lineage graph, false-consensus detection, persisted multi-mode storage,
-background jobs, full forensic dashboard, Ask Detective (LLM optional),
-synthetic demo corpus, CI with docker builds + leakage guard.
+Launch-ready v1.1: everything in v1.0 plus Benford digit screening and fuzzy
+geo entity resolution (see Roadmap below for the full done/todo ledger).
 
 ---
 
@@ -186,20 +184,30 @@ synthetic demo corpus, CI with docker builds + leakage guard.
 - [x] Comparability gates (geography/temporal/unit/definition) before any reconciliation
 - [x] Cross-source contradiction engine (`conflict` / `explainable` / `not_comparable`)
 - [x] False-consensus detection via evidence-diversity ratio
+- [x] **Benford's law digit screening** - Nigrini MAD conformity bands,
+      applicability guards (value count, magnitude span); live demo fixture
+- [x] **Fuzzy entity resolution** - RapidFuzz normalization of place-name variants
+      ("Adabari T.E." ~ "Adabari"); fuzzy geography gate powers cross-source compare
 - [x] Evidence lineage graph per artifact (raw → parser → profile → rule → finding)
 - [x] Persistence: SQLAlchemy dual-mode (SQLite default / Postgres), idempotent hash-keyed findings
-- [x] Background jobs with persisted step-level progress
+- [x] Background jobs with persisted step-level progress; anomaly queue capped
+      at strongest 12 signals per artifact
 - [x] Web dashboard: ingest w/ live job steps, profiler views, findings queue +
-      reviewer decisions, compare workbench, lineage visualization
+      reviewer decisions, compare workbench, lineage visualization,
+      Benford observed-vs-expected digit bars
 - [x] Ask Detective: deterministic cited synthesis; optional LLM with hard safety gate
-- [x] Synthetic demo corpus (one-click seed) + CI incl. docker builds and benchmark-leakage guard
+- [x] Synthetic demo corpus (one-click seed: drift + anomaly + conflict + consensus
+      + Benford demos) and CI incl. docker builds and benchmark-leakage guard
 
-### In progress — Tier 1: smarter engines
+### Achieved quality gates
 
-- [ ] **Benford's law analysis** — first-digit distribution test for fabricated /
-      manipulated numeric columns (classic forensic-accounting signal)
-- [ ] **Fuzzy entity resolution** — RapidFuzz matching for village/district name
-      variants ("Adabari" vs "Adabari T.E.") feeding the geography comparability gate
+- 124 passing tests: API lifecycle, engine math vectors, seed idempotency,
+  Ask-Detective safety gate, benchmark-leakage guard
+- `ruff` clean; Next.js production build clean; both Docker images build in CI
+- End-to-end verified: seed → dashboard → compare → ask → lineage on a fresh database
+
+### In progress — Tier 1 remainder
+
 - [ ] **Seasonal/trend-aware anomaly baseline** — expected value from rolling median
       or STL residual instead of flat mean, cutting false positives on cyclical data
 
