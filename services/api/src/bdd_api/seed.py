@@ -50,6 +50,23 @@ _IRR_ANOMALY = {
     "subsidy_disbursed_inr_lakh": [310, 297, 226, 353, 333, 191, 1300, 247],
 }
 
+def _benford_violation_rows(n: int = 120) -> dict[str, list[Any]]:
+    """Synthetic scheme payments whose first digits are UNIFORM 1..9 -
+    exactly what fabricated-looking data looks like to Benford's law."""
+    districts: list[str] = []
+    fys: list[int] = []
+    ids: list[str] = []
+    amounts: list[float] = []
+    for i in range(n):
+        d = i % 9 + 1
+        magnitude = (i // 18) % 4
+        districts.append(_DISTRICTS[i % len(_DISTRICTS)])
+        fys.append(2021 + (i // 40))
+        ids.append(f"PAY-{100000 + i * 7}")
+        amounts.append(round(d * (1 + ((i * 37) % 80) / 1000.0) * float(10.0**magnitude), 2))
+    return {"district": districts, "fy": fys, "payment_id": ids, "amount_inr": amounts}
+
+
 _PMKISAN_STATE = {"district": ["Haryana"], "payment_total_inr": [13140]}
 _PMKISAN_DIGEST = {"district": ["Haryana"], "payment_total_inr": [12890]}
 
@@ -87,6 +104,14 @@ FIXTURES: list[dict[str, Any]] = [
         "title": "District irrigation energisation FY 2020 (synthetic)",
         "release_date": "FY 2020-21",
         "content": _IRR_ANOMALY,
+    },
+    {
+        "filename": "scheme_payments_benford_demo.csv",
+        "artifact_id": "art-demo-benford",
+        "source_id": "SRC-SYNTH-BENFORD",
+        "title": "Scheme payments register - digit-pattern demo (synthetic)",
+        "release_date": "FY 2021-22",
+        "content": _benford_violation_rows(),
     },
     {
         "filename": "pmkisan_state_release.csv",

@@ -12,7 +12,7 @@ import { Select } from "@/components/ui/Select";
 import { listFindings, type FindingsParams } from "@/lib/api";
 import type { UnifiedFinding } from "@/lib/types";
 
-const KINDS = ["", "anomaly", "contradiction", "drift", "consensus"];
+const KINDS = ["", "anomaly", "contradiction", "drift", "consensus", "benford"];
 const SEVERITIES = ["", "critical", "high", "medium", "low", "info"];
 const STATUSES = ["", "open", "needs_source_clarification", "resolved", "not_detectable", "false_positive_after_review"];
 
@@ -21,6 +21,7 @@ const KIND_ICON: Record<string, string> = {
   contradiction: "⚡",
   drift: "🔀",
   consensus: "🧬",
+  benford: "🎲",
 };
 
 export default function FindingsPage() {

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import type {
   AnomalyFinding,
+  BenfordFinding,
   ConsensusFinding,
   ContradictionFinding,
   DriftFinding,
@@ -168,6 +169,77 @@ export function ContradictionPayloadView({ finding }: { finding: ContradictionFi
       </div>
       <ul className="list-inside list-disc space-y-1 text-sm text-white/65">
         {finding.possible_explanations.map((ex, i) => <li key={i}>{ex}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+export function BenfordPayloadView({ finding }: { finding: BenfordFinding }) {
+  const maxShare = Math.max(...finding.digits.map((d) => Math.max(d.observed_share, d.expected_share)));
+  const pct = (v: number) => `${Math.max((v / maxShare) * 100, 2)}%`;
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="panel p-3">
+          <div className="text-[10px] uppercase tracking-wider text-white/40">Conformity</div>
+          <div
+            className={`mt-1 text-lg font-semibold capitalize ${
+              finding.conformity === "nonconformity" ? "text-[#f87171]" : finding.conformity === "marginal" ? "text-[#fb923c]" : "text-[#fbbf24]"
+            }`}
+          >
+            {finding.conformity}
+          </div>
+        </div>
+        <div className="panel p-3">
+          <div className="text-[10px] uppercase tracking-wider text-white/40">MAD</div>
+          <div className="mt-1 font-mono text-lg font-semibold text-[#f59e0b]">{finding.mad.toFixed(4)}</div>
+        </div>
+        <div className="panel p-3">
+          <div className="text-[10px] uppercase tracking-wider text-white/40">Values analysed</div>
+          <div className="mt-1 font-mono text-lg font-semibold text-white/80">{finding.n_values.toLocaleString("en-IN")}</div>
+        </div>
+      </div>
+
+      <div>
+        <div className="mb-2 flex items-center gap-4 text-[10px] uppercase tracking-wider text-white/40">
+          <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2 w-3 rounded-full bg-gradient-to-r from-[#f59e0b] to-[#fb923c]" /> observed</span>
+          <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2 w-3 rounded-full bg-white/25" /> expected (Benford)</span>
+        </div>
+        <div className="space-y-2">
+          {finding.digits.map((d, i) => (
+            <div key={d.digit} className="flex items-center gap-2 text-xs">
+              <span className="w-3 shrink-0 text-right font-mono text-white/50">{d.digit}</span>
+              <div className="relative h-4 flex-1 overflow-hidden rounded bg-white/[0.04]">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: pct(d.expected_share) }}
+                  transition={{ duration: 0.5 }}
+                  className="absolute inset-y-0 left-0 rounded bg-white/25"
+                />
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: pct(d.observed_share) }}
+                  transition={{ duration: 0.6, delay: i * 0.05 }}
+                  className={`absolute inset-y-0 left-0 rounded ${
+                    d.excess > 0.02
+                      ? "bg-gradient-to-r from-[#fb923c] to-[#f87171]"
+                      : d.excess < -0.05
+                        ? "bg-gradient-to-r from-[#38bdf8]/70 to-[#38bdf8]"
+                        : "bg-gradient-to-r from-[#f59e0b]/80 to-[#fbbf24]"
+                  }`}
+                />
+              </div>
+              <span className={`w-16 shrink-0 text-right font-mono tabular-nums ${d.excess > 0 ? "text-[#fb923c]" : "text-white/40"}`}>
+                {d.excess >= 0 ? "+" : ""}
+                {(d.excess * 100).toFixed(1)}%
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <ul className="list-inside list-disc space-y-1 text-xs leading-relaxed text-white/50">
+        {finding.caveats.map((c, i) => <li key={i}>{c}</li>)}
       </ul>
     </div>
   );

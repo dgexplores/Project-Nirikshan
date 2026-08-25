@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 def test_seed_demo_idempotent_and_populated(api: TestClient) -> None:
     first = api.post("/seed/demo").json()
-    assert len(first["seeded"]) == 5
+    assert len(first["seeded"]) == 6
     assert first["new_findings"] >= 3  # drift + contradiction + consensus
 
     second = api.post("/seed/demo").json()

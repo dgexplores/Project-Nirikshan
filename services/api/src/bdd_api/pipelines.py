@@ -17,13 +17,17 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import polars as pl
 from bdd_contracts.anomaly import AnomalyFinding, ContradictionFinding, DriftFinding
 from bdd_contracts.artifact import ArtifactManifest, SourceInfo
+from bdd_contracts.benford import BenfordFinding
 from bdd_contracts.consensus import ConsensusFinding
 from bdd_contracts.profile import DatasetProfile
 from bdd_forensics.anomaly import detect_iqr, detect_yoy, detect_zscore
+from bdd_forensics.benford import analyze_benford
 from bdd_forensics.definitions import infer_definition_cards
 from bdd_forensics.drift import detect_definition_drift
+from bdd_forensics.entity_resolution import geo_gate_fuzzy
 from bdd_forensics.fitness import compute_fitness
 from bdd_forensics.profiler import profile_dataset
 from bdd_ingestion.manifest import build_manifest
@@ -38,6 +42,10 @@ logger = logging.getLogger("bdd.pipelines")
 
 INGEST_STEPS = ["receive_upload", "parse", "freeze_manifest", "profile", "fitness", "persist"]
 
+# Keep the review queue actionable: strongest signals only. Selection is
+# deterministic (sort by |score| desc, stable for ties).
+MAX_ANOMALY_FINDINGS_PER_ARTIFACT = 12
+
 
 def stable_finding_id(kind: str, payload_json: dict[str, Any], scope: str) -> str:
     """Deterministic id: same inputs -> same finding row (idempotent reruns)."""
@@ -47,6 +55,16 @@ def stable_finding_id(kind: str, payload_json: dict[str, Any], scope: str) -> st
 
 
 def _title_and_summary(payload: Any) -> tuple[str, str]:
+    if isinstance(payload, BenfordFinding):
+        worst = max(payload.digits, key=lambda d: abs(d.excess))
+        return (
+            f"Benford screening: {payload.conformity} digit pattern in '{payload.column}'",
+            (
+                f"{payload.n_values} values; mean absolute deviation {payload.mad:.4f} vs Benford expectation. "
+                f"Largest deviation at digit {worst.digit} ({worst.excess:+.1%}). "
+                "Screening signal - review column semantics before acting."
+            ),
+        )
     if isinstance(payload, AnomalyFinding):
         pct = abs(payload.observed - payload.expected) / max(abs(payload.expected), 1e-9) * 100
         return (
@@ -229,9 +247,6 @@ def run_compare(
     job_id: str | None = None,
 ) -> dict[str, Any]:
     """Gate two artifacts, reconcile chosen numeric totals, detect drift."""
-    from bdd_forensics.comparability import build_comparability
-    from bdd_forensics.cross_source import investigate
-
     with db_session() as session:
         row_a = session.get(ArtifactRow, artifact_a)
         row_b = session.get(ArtifactRow, artifact_b)
@@ -279,33 +294,77 @@ def run_compare(
     df_a = load_dataframe(row_a.raw_uri)
     df_b = load_dataframe(row_b.raw_uri)
 
-    report = build_comparability(
-        left_df=df_a,
-        right_df=df_b,
-        left_district_col=geo_col_a or "__none__",
-        right_district_col=geo_col_b or "__none__",
-        left_fy=fy_a,
-        right_fy=fy_b,
-        left_unit=unit_a,
-        right_unit=unit_b,
-        left_definition=definition_a,
-        right_definition=definition_b,
+    # Geography gate: fuzzy entity resolution first, so spelling variants
+    # ("Adabari" vs "Adabari T.E.") do not falsely block a valid comparison.
+    if geo_col_a and geo_col_b:
+        geo_state, geo_reason = geo_gate_fuzzy(
+            df_a[geo_col_a].drop_nulls().unique().to_list(),
+            df_b[geo_col_b].drop_nulls().unique().to_list(),
+        )
+    else:
+        geo_state, geo_reason = "unknown", "one dataset has no geographic column"
+
+    from bdd_forensics.comparability import (
+        compare_definition,
+        compare_fiscal_years,
+        compare_units,
     )
 
-    contradiction: ContradictionFinding = investigate(
+    temporal, temporal_reason = compare_fiscal_years(fy_a, fy_b)
+    unit_state, unit_reason = compare_units(unit_a, unit_b)
+    def_state, def_reason = compare_definition(definition_a or None, definition_b or None)
+
+    states = [geo_state, temporal, unit_state, def_state]
+    if "not_comparable" in states:
+        overall_state = "not_comparable"
+        blockers = [
+            r for s, r in (
+                (geo_state, geo_reason), (temporal, temporal_reason),
+                (unit_state, unit_reason), (def_state, def_reason),
+            ) if s == "not_comparable"
+        ]
+        overall_reason = f"blocking: {'; '.join(blockers)}"
+    elif "partial" in states:
+        overall_state = "partial"
+        overall_reason = "at least one dimension needs pre-scaling or clarification"
+    else:
+        overall_state = "comparable"
+        overall_reason = "all comparability gates passed"
+
+    report = {
+        "geography": {"state": geo_state, "reason": geo_reason},
+        "temporal": {"state": temporal, "reason": temporal_reason},
+        "unit": {"state": unit_state, "reason": unit_reason},
+        "definition": {"state": def_state, "reason": def_reason},
+        "overall": {"state": overall_state, "reason": overall_reason},
+    }
+
+    from bdd_forensics.cross_source import _delta, reconcile_claims
+
+    reconciliation = reconcile_claims(
+        claim_a={"source_id": artifact_a, "value": total_a},
+        claim_b={"source_id": artifact_b, "value": total_b},
+        report=report,
+    )
+    explanations: list[str] = []
+    if reconciliation == "explainable":
+        explanations.append("values agree within tolerance after comparability gates")
+    elif reconciliation == "not_comparable":
+        explanations.append("pair fails a comparability gate; do not compare directly")
+    else:
+        explanations.append("same definition, unit and period; delta not explained")
+
+    contradiction: ContradictionFinding = ContradictionFinding(
         finding_id="cmp-pending",
         claim_a={"source_id": artifact_a, "metric": column_a, "value": total_a},
         claim_b={"source_id": artifact_b, "metric": column_b, "value": total_b},
-        left_df=df_a,
-        right_df=df_b,
-        left_district_col=geo_col_a or "__none__",
-        right_district_col=geo_col_b or "__none__",
-        left_fy=fy_a,
-        right_fy=fy_b,
-        left_unit=unit_a,
-        right_unit=unit_b,
-        left_definition=definition_a,
-        right_definition=definition_b,
+        reconciliation_status=reconciliation,
+        delta=_delta(total_a, total_b, reconciliation),
+        alignment_tests={dim: entry["state"] for dim, entry in report.items() if dim != "overall"},
+        possible_explanations=explanations,
+        evidence=[f"{artifact_a}@{column_a}", f"{artifact_b}@{column_b}"],
+        severity="medium" if reconciliation == "conflict" else "info",
+        confidence="high",
     )
 
     drift_findings: list[DriftFinding] = []
@@ -322,7 +381,6 @@ def run_compare(
     scope_ids = sorted({artifact_a, artifact_b})
     persist_findings(payloads, scope_ids, kinds, job_id)
 
-    overall_state = report["overall"]["state"] if report else "unknown"
     gates = [
         {"dimension": dim, "state": entry["state"], "reason": entry["reason"]}
         for dim, entry in (report or {}).items()
@@ -366,12 +424,26 @@ def run_anomalies(artifact_id: str, job_id: str | None = None) -> int:
 
     # Engine ids are per-call local ("an-000"); re-key deterministically so
     # ids stay unique across columns/methods and stable across reruns.
+    # Cap volume so one noisy column cannot bury the rest of the queue.
+    findings = sorted(findings, key=lambda f: abs(f.score), reverse=True)[
+        :MAX_ANOMALY_FINDINGS_PER_ARTIFACT
+    ]
     findings = [
         f.model_copy(update={"finding_id": f"{f.method}-{f.metric}-{idx:03d}"})
         for idx, f in enumerate(findings)
     ]
 
-    return persist_findings(findings, [artifact_id], ["anomaly"] * len(findings), job_id)
+    # Benford first-digit screening on numeric columns with enough mass.
+    benford_findings: list[BenfordFinding] = []
+    for value_col in value_cols:
+        raw_values = df[value_col].drop_nulls().cast(pl.Float64, strict=False).to_list()
+        result = analyze_benford(value_col, [v for v in raw_values if v is not None])
+        if result is not None:
+            benford_findings.append(result)
+
+    written = persist_findings(findings, [artifact_id], ["anomaly"] * len(findings), job_id)
+    written += persist_findings(benford_findings, [artifact_id], ["benford"] * len(benford_findings), job_id)
+    return written
 
 
 def validate_upload_filename(filename: str) -> None:

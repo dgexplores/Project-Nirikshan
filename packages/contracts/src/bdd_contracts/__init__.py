@@ -4,6 +4,7 @@ services, pipelines and storage. Imported by all components.
 
 from bdd_contracts.anomaly import AnomalyFinding, ContradictionFinding, DriftFinding
 from bdd_contracts.artifact import ArtifactManifest, ParserInfo, SourceInfo
+from bdd_contracts.benford import BenfordConformity, BenfordFinding, DigitDeviation
 from bdd_contracts.consensus import ConsensusFinding, ConsensusVerdict, OriginGroup
 from bdd_contracts.finding import Claim, EvidenceRef, Finding
 from bdd_contracts.fitness import FitnessComponent, FitnessGrade, FitnessScore
@@ -29,6 +30,8 @@ from bdd_contracts.semantic import (
 __all__ = [
     "AnomalyFinding",
     "ArtifactManifest",
+    "BenfordConformity",
+    "BenfordFinding",
     "Claim",
     "ColumnProfile",
     "ConsensusFinding",
@@ -36,6 +39,7 @@ __all__ = [
     "ContradictionFinding",
     "DatasetProfile",
     "DefinitionCard",
+    "DigitDeviation",
     "Distribution",
     "DriftFinding",
     "EvidenceRef",

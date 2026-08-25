@@ -152,6 +152,28 @@ export interface ConsensusFinding {
   created_at: string;
 }
 
+export type BenfordConformity = "close" | "acceptable" | "marginal" | "nonconformity";
+
+export interface DigitDeviation {
+  digit: number;
+  observed_share: number;
+  expected_share: number;
+  excess: number;
+}
+
+export interface BenfordFinding {
+  finding_id: string;
+  column: string;
+  n_values: number;
+  mad: number;
+  conformity: BenfordConformity;
+  digits: DigitDeviation[];
+  caveats: string[];
+  severity: Severity;
+  confidence: Confidence;
+  created_at: string;
+}
+
 export interface FitnessScore {
   artifact_id: string;
   score: number;
@@ -191,6 +213,7 @@ export type UnifiedFindingKind =
   | "contradiction"
   | "drift"
   | "consensus"
+  | "benford"
   | "quality";
 
 export type FindingStatus =
@@ -205,6 +228,7 @@ export type FindingPayload =
   | ContradictionFinding
   | DriftFinding
   | ConsensusFinding
+  | BenfordFinding
   | QualityObservation;
 
 export interface UnifiedFinding {

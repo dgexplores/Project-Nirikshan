@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { PageHeader } from "@/components/PageChrome";
 import {
   AnomalyPayloadView,
+  BenfordPayloadView,
   ConsensusPayloadView,
   ContradictionPayloadView,
   DriftPayloadView,
@@ -21,6 +22,7 @@ import { Panel } from "@/components/ui/Panel";
 import { getFinding, reviewFinding, type ReviewDecision } from "@/lib/api";
 import type {
   AnomalyFinding,
+  BenfordFinding,
   ConsensusFinding,
   ContradictionFinding,
   DriftFinding,
@@ -90,7 +92,8 @@ export default function FindingDetailPage() {
             {finding.kind === "drift" && <DriftPayloadView finding={finding.payload as DriftFinding} />}
             {finding.kind === "contradiction" && <ContradictionPayloadView finding={finding.payload as ContradictionFinding} />}
             {finding.kind === "consensus" && <ConsensusPayloadView finding={finding.payload as ConsensusFinding} />}
-            {!["anomaly", "drift", "contradiction", "consensus"].includes(finding.kind) && (
+            {finding.kind === "benford" && <BenfordPayloadView finding={finding.payload as BenfordFinding} />}
+            {!["anomaly", "drift", "contradiction", "consensus", "benford"].includes(finding.kind) && (
               <pre className="overflow-x-auto rounded-lg bg-black/40 p-4 font-mono text-xs text-white/70">
                 {JSON.stringify(finding.payload, null, 2)}
               </pre>
