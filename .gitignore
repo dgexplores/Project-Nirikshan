@@ -24,8 +24,12 @@ out/
 
 # Data / artifacts (raw downloads are inspected locally, never committed)
 data/raw/
+data/manifests/
+data/fixtures/public/*.csv
 *.duckdb
 *.db
+*.db-wal
+*.db-shm
 
 # OS / editors
 .DS_Store

@@ -11,10 +11,19 @@ COPY pipelines/ingestion/pyproject.toml pipelines/ingestion/pyproject.toml
 COPY pipelines/ingestion/src pipelines/ingestion/src
 COPY pipelines/forensics/pyproject.toml pipelines/forensics/pyproject.toml
 COPY pipelines/forensics/src pipelines/forensics/src
+COPY pipelines/evaluation/pyproject.toml pipelines/evaluation/pyproject.toml
+COPY pipelines/evaluation/src pipelines/evaluation/src
 COPY services/api/pyproject.toml services/api/pyproject.toml
 COPY services/api/src services/api/src
 
+# psycopg enables BDD_DATABASE_URL=postgresql+psycopg://... against the compose postgres
 RUN uv sync --frozen --no-dev
+
+ENV BDD_RAW_STORE=/data/raw \
+    BDD_MANIFEST_DIR=/data/manifests \
+    BDD_DATABASE_URL=postgresql+psycopg://bdd:bdd_local_only@postgres:5432/bdd \
+    BDD_FIXTURES_DIR=/app/data/fixtures/public \
+    BDD_CORS_ORIGINS=http://localhost:3000
 
 EXPOSE 8000
 CMD ["uv", "run", "--no-dev", "uvicorn", "bdd_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
