@@ -13,6 +13,8 @@ COPY pipelines/forensics/pyproject.toml pipelines/forensics/pyproject.toml
 COPY pipelines/forensics/src pipelines/forensics/src
 COPY pipelines/evaluation/pyproject.toml pipelines/evaluation/pyproject.toml
 COPY pipelines/evaluation/src pipelines/evaluation/src
+COPY packages/cli/pyproject.toml packages/cli/pyproject.toml
+COPY packages/cli/src packages/cli/src
 COPY services/api/pyproject.toml services/api/pyproject.toml
 COPY services/api/src services/api/src
 

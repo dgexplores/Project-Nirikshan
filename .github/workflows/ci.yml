@@ -22,13 +22,66 @@ jobs:
       - name: Lint (ruff)
         run: uv run ruff check .
 
-      - name: Tests
+      - name: Tests (SQLite mode)
         run: uv run pytest
 
       - name: Benchmark leakage guard
         run: uv run pytest tests/test_leakage.py -v
 
-  docker-api:
+  test-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: bdd
+          POSTGRES_PASSWORD: bdd_local_only
+          POSTGRES_DB: bdd
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bdd"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen --all-packages || uv sync --frozen
+      - name: Tests (PostgreSQL mode)
+        env:
+          BDD_DATABASE_URL: postgresql+psycopg://bdd:bdd_local_only@localhost:5432/bdd
+        run: uv run pytest
+
+  docker-stack-smoke:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Boot full stack (api + web + postgres)
+        run: |
+          docker compose -f infra/docker/compose.yml -f infra/docker/compose.local-test.yml up -d --build
+      - name: Wait for API health
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:18000/health > /dev/null; then echo "api up"; exit 0; fi
+            sleep 2
+          done
+          echo "api did not become healthy"; docker compose -f infra/docker/compose.yml logs api; exit 1
+      - name: Smoke: readiness, seed, findings, web proxy
+        run: |
+          set -e
+          curl -sf http://localhost:18000/health/ready | grep -q '"database":true'
+          curl -sf -X POST http://localhost:18000/seed/demo -H 'Content-Length: 0' | grep -q '"seeded"'
+          COUNT=$(curl -sf http://localhost:18000/dashboard/summary | python3 -c 'import json,sys;print(json.load(sys.stdin)["findings_total"])')
+          test "$COUNT" -ge 1 || (echo "no findings after seed"; exit 1)
+          curl -sf http://localhost:13000/api/backend/health | grep -q '"ok"'
+          curl -sf -o /dev/null http://localhost:13000/
+          echo "stack smoke passed: ${COUNT} findings via web->api->postgres"
+
+  docker-images:
     runs-on: ubuntu-latest
     needs: test
     steps:

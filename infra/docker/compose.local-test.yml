@@ -1,0 +1,21 @@
+# Local smoke-test override: avoids clashing with services already bound to
+# 8000/3000/5432 on the dev machine.
+#   docker compose -f infra/docker/compose.yml -f infra/docker/compose.local-test.yml up -d --build
+services:
+  api:
+    ports: !override
+      - "18000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
+
+  web:
+    ports: !override
+      - "13000:3000"
+
+  postgres:
+    ports: !override
+      - "15432:5432"
