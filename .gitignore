@@ -37,6 +37,9 @@ data/fixtures/public/*.csv
 .vscode/
 
 # Logs
-*.logdata/evaluation/
+*.log
+
+# Evaluation outputs (governed, local-only)
+data/evaluation/
 data/benchmark-restricted/access.log
 data/benchmark-restricted/adjudications.csv
