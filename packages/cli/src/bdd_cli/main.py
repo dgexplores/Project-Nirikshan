@@ -418,6 +418,83 @@ def cmd_summary(_: argparse.Namespace) -> int:
     return 0
 
 
+# ---------- blind benchmark evaluation (restricted governance) ----------
+
+
+def _eval_ready() -> None:
+    try:
+        import bdd_evaluation  # noqa: F401
+    except Exception as exc:
+        print(f"error: evaluation package unavailable: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+
+def cmd_eval_run(args: argparse.Namespace) -> int:
+    _eval_ready()
+    from bdd_evaluation.blind import run_blind
+
+    result = run_blind()
+    if args.json:
+        _emit(result, True)
+        return 0
+    print(f"blind run {result['run_id']} written to {result['path']}")
+    print(f"  cases evaluated: {result['cases']}  input_hash {result['input_hash']}")
+    print("labels were NOT read; reveal happens only at adjudication")
+    return 0
+
+
+def cmd_eval_adjudicate(args: argparse.Namespace) -> int:
+    _eval_ready()
+    from bdd_evaluation.adjudicate import adjudicate
+
+    try:
+        result = adjudicate(
+            run_id=args.run_id,
+            case_id=args.case,
+            decision=args.decision,
+            matched_finding_ids=[s for chunk in (args.findings or []) for s in chunk.split(",") if s],
+            note=args.note or "",
+            adjudicator=args.adjudicator,
+        )
+    except (KeyError, ValueError, FileNotFoundError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    if args.json:
+        _emit(result, True)
+        return 0
+    print(f"adjudicated {result['case']}: {result['decision']}")
+    print(f"ledger: {result['ledger']}")
+    return 0
+
+
+def cmd_eval_report(args: argparse.Namespace) -> int:
+    _eval_ready()
+    from bdd_evaluation.adjudicate import report
+
+    try:
+        metrics = report(args.run_id)
+    except FileNotFoundError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    if args.json:
+        _emit(metrics, True)
+        return 0
+    print(f"evaluation report - {metrics['run_id']} (inputs {metrics['input_hash']})")
+    print(f"  cases total:              {metrics['cases_total']}")
+    print(f"  mapped to public data:    {metrics['cases_mapped_to_public_artifacts']}  (coverage {metrics['coverage_ratio']})")
+    print(f"  adjudicated:              {metrics['cases_adjudicated']}")
+    for decision, n in metrics["decisions"].items():
+        print(f"    {decision:<22}{n}")
+    rate = metrics["detectability_rate"]
+    print(f"  detectability rate:       {rate if rate is not None else 'null (no denominator yet)'}")
+    print(f"  evidence completeness:    {metrics['evidence_completeness']}")
+    if metrics["unmapped_cases"]:
+        print(f"  access gaps documented:   {', '.join(metrics['unmapped_cases'])}")
+    if metrics["pending_adjudication"]:
+        print(f"  pending adjudication:     {', '.join(metrics['pending_adjudication'])}")
+    return 0
+
+
 # ---------- parser ----------
 
 
@@ -499,6 +576,29 @@ def build_parser() -> argparse.ArgumentParser:
     p_ask.set_defaults(func=cmd_ask)
 
     sub.add_parser("summary", help="corpus + queue statistics").set_defaults(func=cmd_summary)
+
+    # ---- blind benchmark evaluation (restricted) ----
+    p_eval = sub.add_parser("eval", help="blind benchmark evaluation (restricted)")
+    eval_sub = p_eval.add_subparsers(dest="eval_command", required=True)
+
+    p_run = eval_sub.add_parser("run", help="execute one blinded pass over the case registry")
+    p_run.add_argument("--json", action="store_true")
+    p_run.set_defaults(func=cmd_eval_run)
+
+    p_adj = eval_sub.add_parser("adjudicate", help="record a human decision for one case")
+    p_adj.add_argument("run_id")
+    p_adj.add_argument("case")
+    p_adj.add_argument("--decision", required=True, choices=["detected", "partially_detected", "not_detected", "not_detectable"])
+    p_adj.add_argument("--findings", action="append", help="matched finding id(s), comma-separated, repeatable")
+    p_adj.add_argument("--note")
+    p_adj.add_argument("--adjudicator", default="cli")
+    p_adj.add_argument("--json", action="store_true")
+    p_adj.set_defaults(func=cmd_eval_adjudicate)
+
+    p_rep = eval_sub.add_parser("report", help="metrics with explicit denominators")
+    p_rep.add_argument("run_id")
+    p_rep.add_argument("--json", action="store_true")
+    p_rep.set_defaults(func=cmd_eval_report)
 
     return parser
 

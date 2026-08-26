@@ -1,0 +1,77 @@
+{
+  "run_version": "0.1.0",
+  "run_id": "blind-adfd3870566e59a5",
+  "created_at": "2026-08-26T10:44:32.376998+00:00",
+  "input_hash": "adfd3870566e59a5",
+  "blind_protocol": {
+    "investigator_saw": [
+      "case_id",
+      "linked_source_ids",
+      "public artifacts",
+      "stored findings"
+    ],
+    "labels_excluded": [
+      "audit_report_title",
+      "observation_summary",
+      "affected counts"
+    ]
+  },
+  "cases": [
+    {
+      "case_id": "BDD-001",
+      "linked_sources": [
+        "non-agriculturists"
+      ],
+      "mapped_artifacts": [],
+      "coverage": "unmapped_access_gap",
+      "findings": [],
+      "findings_total": 0,
+      "evidence_complete_findings": 0
+    },
+    {
+      "case_id": "BDD-002",
+      "linked_sources": [
+        "039 stopped due to name mismatch",
+        "9"
+      ],
+      "mapped_artifacts": [],
+      "coverage": "unmapped_access_gap",
+      "findings": [],
+      "findings_total": 0,
+      "evidence_complete_findings": 0
+    },
+    {
+      "case_id": "BDD-003",
+      "linked_sources": [
+        "SRC-GEO-01"
+      ],
+      "mapped_artifacts": [],
+      "coverage": "unmapped_access_gap",
+      "findings": [],
+      "findings_total": 0,
+      "evidence_complete_findings": 0
+    },
+    {
+      "case_id": "BDD-004",
+      "linked_sources": [
+        "SRC-PMK-02"
+      ],
+      "mapped_artifacts": [],
+      "coverage": "unmapped_access_gap",
+      "findings": [],
+      "findings_total": 0,
+      "evidence_complete_findings": 0
+    },
+    {
+      "case_id": "BDD-005",
+      "linked_sources": [
+        "SRC-JAY-01"
+      ],
+      "mapped_artifacts": [],
+      "coverage": "unmapped_access_gap",
+      "findings": [],
+      "findings_total": 0,
+      "evidence_complete_findings": 0
+    }
+  ]
+}

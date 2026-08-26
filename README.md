@@ -193,8 +193,8 @@ observability gap. No performance claims until measured.
 
 ## Status
 
-Launch-ready v1.2: everything in v1.0 plus Benford digit screening, fuzzy geo
-entity resolution and the full `bdd` command line (see Roadmap for the ledger).
+Launch-ready v1.3: v1.0 platform + Benford screening + fuzzy geo resolution +
+`bdd` CLI + blind benchmark evaluation runner (see Roadmap for the ledger).
 
 ---
 
@@ -229,9 +229,11 @@ entity resolution and the full `bdd` command line (see Roadmap for the ledger).
 
 ### Achieved quality gates
 
-- 133 passing tests: API lifecycle, engine math vectors, CLI commands, seed
+- 138 passing tests: API lifecycle, engine math vectors, CLI commands, seed
   idempotency (reruns write zero duplicates), Ask-Detective safety gate,
-  benchmark-leakage guard
+  blind-run label-exclusion guard, benchmark-leakage guard
+- Governance: the API layer has zero import path to the restricted registry
+  (structurally verified); every label read is access-logged
 - `ruff` clean; Next.js production build clean; both Docker images build in CI
 - End-to-end verified: seed → dashboard → compare → ask → lineage on a fresh database
 
@@ -264,8 +266,10 @@ entity resolution and the full `bdd` command line (see Roadmap for the ledger).
 - [ ] Scheduled source monitors: re-fetch registered URLs on a cron, alert when a
       portal silently revises published numbers
 - [ ] One-click case-file export (PDF: findings + lineage + reviewer sign-off)
-- [ ] Blind benchmark runner UI (`pipelines/evaluation`) producing measured
-      precision/recall against the CAG registry
+- [x] **Blind benchmark runner** (`bdd eval run|adjudicate|report`) - label-blind
+      investigation pass, logged label reveal at adjudication, append-only ledger,
+      metrics with explicit denominators (detectability rate null until cases are
+      adjudicated; precision/recall still require pre-registered matching)
 - [ ] Public API keys for embedding BDD checks into other pipelines
 
 > Rule that governs all of the above: no accuracy claims until the blinded CAG

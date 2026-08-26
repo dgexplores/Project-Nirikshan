@@ -149,6 +149,7 @@ name = "bdd-evaluation"
 version = "0.1.0"
 source = { editable = "pipelines/evaluation" }
 dependencies = [
+    { name = "bdd-api" },
     { name = "bdd-contracts" },
     { name = "bdd-forensics" },
     { name = "bdd-ingestion" },
@@ -156,6 +157,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "bdd-api", editable = "services/api" },
     { name = "bdd-contracts", editable = "packages/contracts" },
     { name = "bdd-forensics", editable = "pipelines/forensics" },
     { name = "bdd-ingestion", editable = "pipelines/ingestion" },
