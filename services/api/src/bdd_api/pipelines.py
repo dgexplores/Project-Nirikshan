@@ -47,9 +47,23 @@ INGEST_STEPS = ["receive_upload", "parse", "freeze_manifest", "profile", "fitnes
 MAX_ANOMALY_FINDINGS_PER_ARTIFACT = 12
 
 
+# Payload fields that change on every construction; excluded from the
+# stability hash so reruns produce identical finding ids.
+_VOLATILE_PAYLOAD_KEYS = {"created_at", "computed_at", "generated_at", "retrieved_at"}
+
+
+def _strip_volatile(node: Any) -> Any:
+    if isinstance(node, dict):
+        return {k: _strip_volatile(v) for k, v in node.items() if k not in _VOLATILE_PAYLOAD_KEYS}
+    if isinstance(node, list):
+        return [_strip_volatile(item) for item in node]
+    return node
+
+
 def stable_finding_id(kind: str, payload_json: dict[str, Any], scope: str) -> str:
-    """Deterministic id: same inputs -> same finding row (idempotent reruns)."""
-    canonical = json.dumps(payload_json, sort_keys=True, default=str)
+    """Deterministic id: same inputs -> same finding row (idempotent reruns).
+    Timestamps are stripped so re-detection of the same fact keeps its id."""
+    canonical = json.dumps(_strip_volatile(payload_json), sort_keys=True, default=str)
     digest = hashlib.sha256(f"{scope}|{canonical}".encode()).hexdigest()[:12]
     return f"{kind}-{digest}"
 
@@ -169,6 +183,7 @@ def run_ingest(
         release_date=release_date,
     )
     manifest_path = settings.manifest_dir / f"{artifact_id}.json"
+    settings.manifest_dir.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(json.loads(manifest.model_dump_json()), indent=2) + "\n")
     reporter.done("freeze_manifest", f"sha256 {manifest.sha256[:16]}...")
 
@@ -379,7 +394,7 @@ def run_compare(
     payloads: list[Any] = [contradiction, *drift_findings]
     kinds: list[str] = ["contradiction"] + ["drift"] * len(drift_findings)
     scope_ids = sorted({artifact_a, artifact_b})
-    persist_findings(payloads, scope_ids, kinds, job_id)
+    written = persist_findings(payloads, scope_ids, kinds, job_id)
 
     gates = [
         {"dimension": dim, "state": entry["state"], "reason": entry["reason"]}
@@ -395,6 +410,7 @@ def run_compare(
         },
         "contradiction": json.loads(contradiction.model_dump_json()),
         "drift_findings": [json.loads(d.model_dump_json()) for d in drift_findings],
+        "findings_written": written,
     }
 
 

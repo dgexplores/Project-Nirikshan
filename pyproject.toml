@@ -10,6 +10,7 @@ dependencies = [
     "bdd-forensics",
     "bdd-api",
     "bdd-evaluation",
+    "bdd-cli",
 ]
 
 [dependency-groups]
@@ -42,6 +43,7 @@ bdd-ingestion = { workspace = true }
 bdd-forensics = { workspace = true }
 bdd-api = { workspace = true }
 bdd-evaluation = { workspace = true }
+bdd-cli = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

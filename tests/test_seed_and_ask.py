@@ -14,6 +14,7 @@ def test_seed_demo_idempotent_and_populated(api: TestClient) -> None:
     second = api.post("/seed/demo").json()
     assert second["seeded"] == []
     assert set(second["skipped"]) == {s for s in first["seeded"]}
+    assert second["new_findings"] == 0, "reruns must be idempotent (stable finding ids)"
 
 
 def test_seed_produces_explorable_case(api: TestClient) -> None:

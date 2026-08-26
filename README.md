@@ -44,11 +44,37 @@ docker compose -f infra/docker/compose.yml up --build
 ### Verify
 
 ```bash
-uv run pytest        # 100+ tests incl. API lifecycle, engines, leakage guard
+uv run pytest        # 130+ tests incl. API lifecycle, engines, CLI, leakage guard
 uv run ruff check .  # lint
 cd apps/web && npm run build  # typecheck + production build
-curl -X POST localhost:8000/seed/demo   # deterministic synthetic corpus
 ```
+
+---
+
+## Command line
+
+Everything is scriptable via the `bdd` command (installed by `uv sync`):
+
+```bash
+uv run bdd init                          # create dirs + database
+uv run bdd seed --reset                  # fresh synthetic demo corpus
+uv run bdd serve --port 8000             # start the HTTP API
+
+uv run bdd ingest data.csv --source-id SRC-MGN-01 --release-date "FY 2024-25"
+uv run bdd artifacts                     # ids, hashes, fitness grades
+uv run bdd show art-demo-benford         # overview (or --manifest/--profile/--fitness/--lineage)
+
+uv run bdd findings                      # open review queue (default)
+uv run bdd findings --kind benford --severity high
+uv run bdd finding <id>                  # full JSON payload
+uv run bdd review <id> --status resolved --note "verified against origin"
+
+uv run bdd compare art-a beneficiaries_lakh art-b beneficiaries_crore
+uv run bdd ask "any outliers in tube wells?" --artifact art-demo-irr-anomaly
+uv run bdd summary                       # corpus + queue statistics
+```
+
+Every list command accepts `--json` for scripting/cron use.
 
 ---
 
@@ -167,8 +193,8 @@ observability gap. No performance claims until measured.
 
 ## Status
 
-Launch-ready v1.1: everything in v1.0 plus Benford digit screening and fuzzy
-geo entity resolution (see Roadmap below for the full done/todo ledger).
+Launch-ready v1.2: everything in v1.0 plus Benford digit screening, fuzzy geo
+entity resolution and the full `bdd` command line (see Roadmap for the ledger).
 
 ---
 
@@ -196,13 +222,16 @@ geo entity resolution (see Roadmap below for the full done/todo ledger).
       reviewer decisions, compare workbench, lineage visualization,
       Benford observed-vs-expected digit bars
 - [x] Ask Detective: deterministic cited synthesis; optional LLM with hard safety gate
+- [x] **`bdd` CLI**: init/serve/seed/ingest/artifacts/show/findings/review/
+      compare/ask/summary — every list command `--json`-scriptable
 - [x] Synthetic demo corpus (one-click seed: drift + anomaly + conflict + consensus
       + Benford demos) and CI incl. docker builds and benchmark-leakage guard
 
 ### Achieved quality gates
 
-- 124 passing tests: API lifecycle, engine math vectors, seed idempotency,
-  Ask-Detective safety gate, benchmark-leakage guard
+- 133 passing tests: API lifecycle, engine math vectors, CLI commands, seed
+  idempotency (reruns write zero duplicates), Ask-Detective safety gate,
+  benchmark-leakage guard
 - `ruff` clean; Next.js production build clean; both Docker images build in CI
 - End-to-end verified: seed → dashboard → compare → ask → lineage on a fresh database
 

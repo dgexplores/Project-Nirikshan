@@ -205,7 +205,7 @@ def seed_demo() -> dict[str, Any]:
             "art-demo-micro-2021",
             "beneficiaries_crore",
         )
-        findings_written += len(result["drift_findings"]) + 1
+        findings_written += result["findings_written"]
 
     # False-consensus demo: digest derives from the state release.
     if all(_exists(aid) for aid in ("art-demo-pmk-state", "art-demo-pmk-digest")):
