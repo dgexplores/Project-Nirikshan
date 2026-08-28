@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: bdd-api
+    runtime: docker
+    dockerfilePath: ./infra/docker/Dockerfile.api
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: BDD_DATABASE_URL
+        fromDatabase:
+          name: bdd-db
+          property: connectionString
+      - key: BDD_RAW_STORE
+        value: /data/raw
+      - key: LLM_PROVIDER
+        value: mock
+  - type: web
+    name: bdd-web
+    runtime: node
+    plan: free
+    rootDir: apps/web
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start -- --port $PORT --hostname 0.0.0.0
+    envVars:
+      - key: BACKEND_ORIGIN
+        fromService:
+          name: bdd-api
+          type: web
+          property: host
+databases:
+  - name: bdd-db
+    plan: free
+    databaseName: bdd
+    user: bdd
