@@ -93,6 +93,47 @@ Imagine government portals publish numbers about farmers, crops, pensions. Somet
 
 ---
 
+## ✅ What BDD Can Do TODAY (Capabilities) — Easy Language
+
+**You can use it right now for real work:**
+
+| Capability | What happens | Try it |
+|---|---|---|
+| **Upload any Indian dataset** | Drag-drop CSV/Excel/JSON → frozen with SHA256 hash, never lost | `Datasets` page or `bdd ingest` |
+| **Auto-check quality** | Shows nulls, duplicates, PII (Aadhaar/PAN), fitness grade A-F | Open any dataset → `Profile` tab |
+| **Catch 5 forensic patterns** | Drift (lakh→crore), spike (5k vs 1k), contradiction (2 sources differ), false consensus (1 source copied), Benford digit check | `Findings` queue |
+| **See proof for every flag** | Click finding → evidence row + lineage graph `raw → parser → rule → finding` | `Findings → View lineage` |
+| **Compare 2 datasets safely** | Checks geography/period/unit *before* comparing numbers (blocks bad compares) | `Compare` page |
+| **Ask in Hindi/English** | `बरेली में कितने लाभार्थी?` → cited answer `[E1]` or honest refusal | `Ask Detective` or `bdd ask` |
+| **Work offline or with AI** | Deterministic cited answers always; add Sarvam/BharatGen key to get LLM hypotheses (still cited) | `POST /ask` |
+| **Script everything** | `bdd` CLI + API + blind benchmark runner (`bdd eval`) with explicit denominators | `bdd summary`, `bdd eval run` |
+| **Deploy free** | SQLite locally or Postgres on Railway free tier, frontend on Vercel free | `docker compose up` |
+
+**Live proof:** 6 AIKosh demo datasets (KCC 65 HI/EN, Pincode 87, Crop 60) → 20 findings already seeded — open https://web-tau-sandy-60.vercel.app and click `Findings`.
+
+---
+
+## 🚧 What Is NOT Made Yet / Can Be Better — Honest Gaps
+
+**These are real limitations today — roadmap tells how we fix them:**
+
+| Gap | Why it matters | How to make it better | Track |
+|---|---|---|---|
+| **No seasonal baseline** | Flat mean flags normal seasonal spikes as anomalies | Rolling median / STL residual | Tier 1 remainder |
+| **No PDF/document drift** | Only tables checked, not scheme PDFs/policy text | PDF ingestion + Qdrant embeddings | Tier 2 |
+| **No deep RAG agent** | Retrieval is TF-IDF, not vector search; no LangGraph flow | Qdrant + embeddings + `scope_guard → retrieve → cited_memo → safety_check` | Tier 2 |
+| **Hindi understanding is stub** | Hindi queries tagged but not translated (Bhashini stub) | Live Bhashini/Sarvam Translate API | Tier 2 |
+| **No login / roles** | Anyone can review; no reviewer vs admin | JWT auth + RBAC | Tier 3 |
+| **Jobs die on restart** | Thread-pool jobs, no retry | Arq/Celery + Redis | Tier 3 |
+| **No cloud storage** | Raw files on local disk | S3/MinIO + presigned uploads | Tier 3 |
+| **No DB migrations** | `create_all` on startup | Alembic versioned migrations | Tier 3 |
+| **No auto-monitor** | Must re-upload when portal updates | Cron re-fetch + alert on silent revisions | Tier 4 |
+| **No PDF case export** | Can't share case file externally | One-click PDF (findings + lineage + sign-off) | Tier 4 |
+
+> **No fake accuracy:** we report no precision/recall until the blind CAG benchmark is run via `bdd eval`. Transparency over hype — see `docs/benchmark-protocol.md`.
+
+---
+
 ## How It Works (3 Steps)
 
 ```
