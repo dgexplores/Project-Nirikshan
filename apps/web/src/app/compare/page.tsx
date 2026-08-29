@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { HelpBanner } from "@/components/OnboardingStepper";
 import { PageHeader, HashText } from "@/components/PageChrome";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -96,6 +98,8 @@ export default function ComparePage() {
 
   return (
     <div>
+      <Breadcrumb items={[{ label: "Dashboard", href: "/" }, { label: "Compare" }]} />
+      <HelpBanner title="Compare two datasets step-by-step" desc="Pick two datasets + same measure → gates check (geo/unit/period) → then reconciliation. Blocked = do not compare." href="/datasets" cta="Need datasets?" />
       <PageHeader
         title="Cross-source comparison"
         subtitle="Comparability gates run first: geography, period, unit and definition. Only a comparable pair gets reconciled — and neither side is ever declared 'wrong'."

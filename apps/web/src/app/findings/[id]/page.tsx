@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { Breadcrumb } from "@/components/Breadcrumb";
 import { PageHeader } from "@/components/PageChrome";
 import {
   AnomalyPayloadView,
@@ -39,6 +40,7 @@ const REVIEW_OPTIONS: { value: ReviewDecision; label: string; hint: string }[] =
 
 export default function FindingDetailPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const id = decodeURIComponent(params.id);
 
   const [finding, setFinding] = useState<UnifiedFinding | null>(null);
@@ -56,7 +58,8 @@ export default function FindingDetailPage() {
     setSaving(status);
     try {
       await reviewFinding(id, { status, note: note || undefined });
-      load();
+      // redirect back to queue with feedback — user instantly sees it move out of "open"
+      router.push("/findings");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -69,9 +72,10 @@ export default function FindingDetailPage() {
 
   return (
     <div>
+      <Breadcrumb items={[{ label: "Dashboard", href: "/" }, { label: "Findings", href: "/findings" }, { label: finding.id }]} />
       <PageHeader
         title={finding.title}
-        subtitle={`Finding ${finding.id}`}
+        subtitle={`Finding ${finding.id} — click any artifact below to see its lineage, or set a decision on the right to return to the queue`}
         actions={
           <>
             <SeverityBadge severity={finding.severity} />

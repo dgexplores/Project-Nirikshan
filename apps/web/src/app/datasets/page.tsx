@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { formatBytes } from "@/components/AnimatedNumber";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { HelpBanner } from "@/components/OnboardingStepper";
 import { PageHeader, HashText } from "@/components/PageChrome";
 import { ProgressSteps } from "@/components/ProgressSteps";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +26,7 @@ import { cn } from "@/lib/utils";
 const ACCEPT = ".csv,.tsv,.xlsx,.json,.jsonl,.parquet";
 
 export default function DatasetsPage() {
+  const router = useRouter();
   const [items, setItems] = useState<ArtifactSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -69,10 +73,12 @@ export default function DatasetsPage() {
       if (final.status === "failed") {
         setUploadError(final.error || "ingest failed");
       } else {
+        // success → clear and redirect to the new dataset detail for immediate feedback
+        const newId = accepted.artifact_id;
         setFile(null);
         setTitle("");
         setReleaseDate("");
-        load();
+        router.push(`/datasets/${encodeURIComponent(newId)}`);
       }
     } catch (e) {
       setUploadError((e as Error).message);
@@ -83,10 +89,12 @@ export default function DatasetsPage() {
 
   return (
     <div>
+      <Breadcrumb items={[{ label: "Dashboard", href: "/" }, { label: "Datasets" }]} />
       <PageHeader
         title="Datasets"
         subtitle="Every upload is hashed (SHA-256), frozen immutably, profiled and scored. Raw bytes are never modified."
       />
+      <HelpBanner title="New here? Drop a CSV on the left → see it appear on the right → click to inspect" desc="After ingest you are auto-redirected to the dataset detail (profile, lineage, fitness). Try the demo-padded rows first." href="/datasets" cta="How to use" />
 
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         <Panel className="h-fit lg:sticky lg:top-24">

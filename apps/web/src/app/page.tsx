@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AnimatedNumber, formatBytes } from "@/components/AnimatedNumber";
+import { HelpBanner, OnboardingStepper } from "@/components/OnboardingStepper";
 import { PageHeader, StatCard } from "@/components/PageChrome";
 import { SeverityBadge } from "@/components/ui/SeverityBadge";
 import { Button } from "@/components/ui/Button";
@@ -32,6 +33,8 @@ export default function DashboardPage() {
     try {
       await seedDemo();
       load();
+      // after seeding, nudge user to next step — auto-scroll to findings
+      setTimeout(() => document.getElementById("next-steps")?.scrollIntoView({ behavior: "smooth" }), 300);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -72,12 +75,16 @@ export default function DashboardPage() {
         }
       />
 
+      <div id="how-it-works" className="mb-6">
+        <OnboardingStepper artifacts={summary.artifacts} findings={summary.findings_total} />
+      </div>
+
       {empty && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-6">
           <EmptyState
             icon="🔍"
-            title="No artifacts yet"
-            hint="Load the synthetic demo corpus to explore a full forensic case, or upload your own datasets."
+            title="No artifacts yet — start here"
+            hint="Click 'Load demo case' above, or go to Datasets to drop your own CSV. Next: review Findings, then Ask in Hindi/English."
           />
         </motion.div>
       )}
@@ -157,12 +164,16 @@ export default function DashboardPage() {
         </motion.section>
 
         <motion.section
+          id="next-steps"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.28 }}
           className="panel p-5"
         >
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-white/50">Latest findings</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-white/50">Latest findings</h2>
+            {summary.findings_total > 0 && <Link href="/findings" className="text-xs text-[#f59e0b] hover:underline">View all findings →</Link>}
+          </div>
           <ul className="mt-4 space-y-2.5">
             <AnimatePresence initial={false}>
               {summary.recent_findings.map((finding, i) => (

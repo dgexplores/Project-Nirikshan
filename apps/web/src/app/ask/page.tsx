@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { HelpBanner } from "@/components/OnboardingStepper";
 import { PageHeader } from "@/components/PageChrome";
 import { Button } from "@/components/ui/Button";
 import { ConfidencePill } from "@/components/ui/ConfidencePill";
@@ -72,6 +74,8 @@ export default function AskPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
+      <Breadcrumb items={[{ label: "Dashboard", href: "/" }, { label: "Ask Detective" }]} />
+      <HelpBanner title="Ask in Hindi or English — cited or refused" desc="Every answer needs evidence [E#]. Try the example chips below, or restrict to one dataset via the scope pills." href="/datasets" cta="See datasets" />
       <PageHeader
         title="Ask Detective"
         subtitle="Answers are synthesized only from stored evidence and must carry citations — otherwise the detective refuses to answer."

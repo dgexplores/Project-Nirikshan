@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { formatBytes } from "@/components/AnimatedNumber";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { HelpBanner } from "@/components/OnboardingStepper";
 import { HashText, PageHeader } from "@/components/PageChrome";
 import { LineageViz } from "@/components/LineageViz";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -93,12 +95,15 @@ export default function DatasetDetailPage() {
   }
 
   if (error) return <ErrorState message={error} onRetry={loadAll} />;
+  // breadcrumb needs id, handled in render below
   if (!manifest || !profile || !fitness) {
     return <div className="flex justify-center py-32"><Spinner /></div>;
   }
 
   return (
     <div>
+      <Breadcrumb items={[{ label: "Dashboard", href: "/" }, { label: "Datasets", href: "/datasets" }, { label: id }]} />
+      <HelpBanner title="Inspect one dataset" desc="Switch tabs to see columns, quality flags, and the evidence lineage graph that proves every finding." href="/findings" cta="Go to Findings" />
       <PageHeader
         title={manifest.source.official_title || manifest.artifact_id}
         subtitle={`${manifest.artifact_id} · frozen ${new Date(manifest.retrieved_at).toLocaleString("en-IN")}`}

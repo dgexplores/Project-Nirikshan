@@ -29,6 +29,7 @@ const LINKS = [
   { href: "/findings", label: "Findings" },
   { href: "/compare", label: "Compare" },
   { href: "/ask", label: "Ask Detective" },
+  { href: "/#how-it-works", label: "Help" },
 ];
 
 export function SiteNav() {

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Breadcrumb } from "@/components/Breadcrumb";
+import { HelpBanner } from "@/components/OnboardingStepper";
 import { PageHeader } from "@/components/PageChrome";
 import { SeverityBadge } from "@/components/ui/SeverityBadge";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -49,10 +51,12 @@ export default function FindingsPage() {
 
   return (
     <div>
+      <Breadcrumb items={[{ label: "Dashboard", href: "/" }, { label: "Findings" }]} />
       <PageHeader
         title="Findings queue"
         subtitle={`${total} finding(s) matching filters. Each carries evidence refs and a reproducible recipe — review before acting.`}
       />
+      <HelpBanner title="Review flow: click a finding → read evidence → set decision → auto-returns here" desc="Use filters to focus by severity/engine. Start with high severity." href="/findings" cta="Got it" />
 
       <div className="mb-5 flex flex-wrap items-center gap-2">
         <Select
