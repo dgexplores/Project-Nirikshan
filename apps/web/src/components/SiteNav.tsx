@@ -28,41 +28,36 @@ const LINKS = [
   { href: "/datasets", label: "Datasets" },
   { href: "/findings", label: "Findings" },
   { href: "/compare", label: "Compare" },
-  { href: "/ask", label: "Ask Detective" },
-  { href: "/#how-it-works", label: "Help" },
+  { href: "/ask", label: "Ask" },
 ];
 
 export function SiteNav() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#070b14]/85 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-8 px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2.5 shrink-0">
-          <DetectiveMark className="size-8" />
-          <span className="flex items-baseline gap-2">
-            <span className="text-sm font-semibold tracking-tight text-slate-100 sm:text-base">
-              Bharat Data Detective
-            </span>
-            <span className="hash rounded border border-amber-400/40 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
-              BDD
-            </span>
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-[#070b14]/92 backdrop-blur supports-[backdrop-filter]:bg-[#070b14]/80">
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:h-16 sm:gap-6 sm:px-6">
+        <Link href="/" className="flex shrink-0 items-center gap-2.5 focus-visible:outline-none">
+          <DetectiveMark className="size-7 sm:size-8" />
+          <span className="flex items-baseline gap-1.5">
+            <span className="text-sm font-semibold tracking-tight text-slate-100 sm:text-[15px]">Bharat Data Detective</span>
+            <span className="hidden rounded border border-amber-400/35 bg-amber-400/10 px-1 py-0.5 font-mono text-[10px] font-bold leading-none text-amber-400 sm:inline-block">BDD</span>
           </span>
         </Link>
-        <nav aria-label="Primary" className="ml-auto">
-          <ul className="flex items-center gap-1 text-sm">
+
+        <nav aria-label="Primary" className="ml-auto min-w-0">
+          <ul className="flex items-center gap-0.5 overflow-x-auto overscroll-contain whitespace-nowrap text-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {LINKS.map(({ href, label }) => {
-              const active =
-                href === "/" ? pathname === "/" : pathname.startsWith(href);
+              const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
               return (
-                <li key={href}>
+                <li key={href} className="shrink-0">
                   <Link
                     href={href}
                     aria-current={active ? "page" : undefined}
                     className={
                       active
-                        ? "rounded-lg bg-white/[0.07] px-3 py-2 font-medium text-slate-50"
-                        : "rounded-lg px-3 py-2 text-slate-400 transition hover:bg-white/[0.04] hover:text-slate-200"
+                        ? "inline-flex rounded-full bg-white/[0.09] px-2.5 py-1.5 text-xs font-semibold text-slate-50 sm:px-3 sm:py-2 sm:text-sm"
+                        : "inline-flex rounded-full px-2.5 py-1.5 text-xs text-slate-400 transition hover:bg-white/[0.05] hover:text-slate-200 sm:px-3 sm:py-2 sm:text-sm"
                     }
                   >
                     {label}
@@ -70,6 +65,11 @@ export function SiteNav() {
                 </li>
               );
             })}
+            <li className="hidden shrink-0 sm:block">
+              <Link href="/#how-it-works" className="inline-flex rounded-full px-3 py-2 text-sm text-slate-500 hover:text-slate-300">
+                Help
+              </Link>
+            </li>
           </ul>
         </nav>
       </div>
