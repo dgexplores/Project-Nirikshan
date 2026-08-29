@@ -13,7 +13,26 @@
 | **Frontend (Next.js)** | **https://web-tau-sandy-60.vercel.app** | Dashboard → Datasets (drag-drop) → Findings → Ask Detective |
 | **Backend API (FastAPI)** | **https://bharat-api-production.up.railway.app** | Health, seed, ask |
 | **API Docs (Swagger)** | **https://bharat-api-production.up.railway.app/docs** | Try all endpoints live |
-| **GitHub** | **https://github.com/dgexplores/bharat-data-detective** | Code, 138 tests |
+| **GitHub (Direct Use)** | **https://github.com/dgexplores/bharat-data-detective** | Clone & run locally — see below |
+
+### 📥 Direct GitHub Use — One Click
+
+**Clone & run locally (2 commands):**
+```bash
+git clone https://github.com/dgexplores/bharat-data-detective.git
+cd bharat-data-detective && docker compose -f infra/docker/compose.yml up --build
+# → Frontend: http://localhost:3000  Backend: http://localhost:8000/docs
+```
+
+**Use in browser (no install):**
+- **Frontend:** https://web-tau-sandy-60.vercel.app
+- **Backend:** https://bharat-api-production.up.railway.app/docs
+
+**Open in GitHub Codespaces (one click, free):**
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=dgexplores/bharat-data-detective)
+
+**Deploy your own free copy:**
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dgexplores/bharat-data-detective&project-name=bharat-data-detective&root-directory=apps/web) [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/github/dgexplores/bharat-data-detective)
 
 **Quick test (copy-paste in terminal):**
 ```bash
