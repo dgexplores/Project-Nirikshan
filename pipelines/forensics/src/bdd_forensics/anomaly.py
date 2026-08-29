@@ -15,15 +15,17 @@ IQR_MULTIPLIER = 1.5
 YOY_MAX_RATIO = 3.0
 
 
-def _zscore(series: pl.Series) -> pl.Series:
-    s = series.drop_nulls()
-    if len(s) < 3:
-        return pl.Series([])
-    mean = s.mean()
-    std = s.std()
+def _zscore(series: pl.Series) -> tuple[pl.Series, float | None]:
+    non_null = series.drop_nulls()
+    if len(non_null) < 3:
+        return pl.Series([]), None
+    mean = non_null.mean()
+    std = non_null.std()
     if std is None or std == 0:
-        return pl.Series([])
-    return ((s - mean) / std).alias(s.name)
+        return pl.Series([]), None
+    # Apply to the full series (not the null-dropped one) so the result
+    # stays df-length for with_columns(). Arithmetic on a null is null.
+    return ((series - mean) / std).alias(series.name), mean
 
 
 def detect_zscore(
@@ -32,10 +34,9 @@ def detect_zscore(
 ) -> list[AnomalyFinding]:
     """Flag rows whose z-score exceeds threshold. Rows are facts, not verdicts."""
     findings: list[AnomalyFinding] = []
-    s = _zscore(df[value_col])
+    s, mean = _zscore(df[value_col])
     if s.is_empty():
         return findings
-    mean = df[value_col].mean()
     for row in df.with_columns(s.alias("_z")).iter_rows(named=True):
         z = row["_z"]
         if z is None or abs(z) <= threshold:
@@ -70,8 +71,9 @@ def detect_iqr(
         return findings
     q1, q3 = _quantile(vals, 0.25), _quantile(vals, 0.75)
     iqr = q3 - q1
-    if iqr == 0:
-        return findings
+    # iqr==0 collapses the fence to a point (q1==q3). Fall through to the
+    # loop below instead of going silent, it already guards score/severity
+    # with `if iqr else ...`, so any value off that point still gets flagged.
     lo, hi = q1 - IQR_MULTIPLIER * iqr, q3 + IQR_MULTIPLIER * iqr
     for row in df.iter_rows(named=True):
         v = row[value_col]
@@ -119,8 +121,14 @@ def detect_yoy(
         combined = _yoy_frame(df, value_col, period_col)
 
     for row in combined.iter_rows(named=True):
-        pct = row["_pct"]
-        if pct is None or abs(pct) <= 100.0 * (max_ratio - 1):
+        prev, pct, value = row["_prev"], row["_pct"], row[value_col]
+        # A zero prior-period baseline makes percent change undefined (div
+        # by zero). Treat "0 -> nonzero" as its own notable case instead of
+        # silently producing inf (which serializes to a misleading null).
+        zero_baseline = prev == 0 and value not in (None, 0)
+        if pct is None and not zero_baseline:
+            continue
+        if pct is not None and abs(pct) <= 100.0 * (max_ratio - 1):
             continue
         slice_, key = _slice_for(row, entity_col)
         slice_["period"] = row[period_col]
@@ -129,15 +137,19 @@ def detect_yoy(
                 finding_id=f"an-{len(findings):03d}",
                 metric=metric,
                 slice=slice_,
-                observed=float(row[value_col]),
-                expected=_round(row["_prev"]) if row["_prev"] is not None else None,
-                baseline=_round(row["_prev"]) if row["_prev"] is not None else None,
+                observed=float(value),
+                expected=_round(prev) if prev is not None else None,
+                baseline=_round(prev) if prev is not None else None,
                 method="yoy_change",
-                score=_round(pct),
-                severity="high" if abs(pct) > 500.0 else "medium",
+                score=_round(pct) if pct is not None else None,
+                severity="high" if zero_baseline or (pct is not None and abs(pct) > 500.0) else "medium",
                 confidence="moderate",
                 evidence_query=_evq("yoy_change", value_col, key),
-                caveats=["may be a definition, boundary or reporting-period change"],
+                caveats=(
+                    ["prior period baseline was zero, percentage change is undefined - flagged on new nonzero activity"]
+                    if zero_baseline
+                    else ["may be a definition, boundary or reporting-period change"]
+                ),
             )
         )
     return findings
@@ -145,9 +157,14 @@ def detect_yoy(
 
 def _yoy_frame(g: pl.DataFrame, value_col: str, period_col: str) -> pl.DataFrame:
     g = g.sort(period_col)
-    prev = g[value_col].shift(1)
-    pct = ((g[value_col] - prev) / prev * 100).alias("_pct")
-    return g.with_columns(prev.alias("_prev"), pct)
+    prev = pl.col(value_col).shift(1)
+    return g.with_columns(
+        prev.alias("_prev"),
+        pl.when(prev == 0)
+        .then(pl.lit(None, dtype=pl.Float64))
+        .otherwise((pl.col(value_col) - prev) / prev * 100)
+        .alias("_pct"),
+    )
 
 
 def _slice_for(row: dict, key_col: str | None) -> tuple[dict, str]:

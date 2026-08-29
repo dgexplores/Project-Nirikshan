@@ -97,3 +97,12 @@ def test_benford_marginal_band_reports_medium() -> None:
 @pytest.mark.parametrize("bad", [[], [float("nan")], [0.0] * 60])
 def test_benford_handles_degenerate_input(bad: list[float]) -> None:
     assert analyze_benford("col", bad) is None
+
+
+def test_acceptable_conformity_returns_no_finding(monkeypatch: pytest.MonkeyPatch) -> None:
+    # "Acceptable" is normal, non-suspicious conformity by Nigrini's own
+    # terminology and used to still produce a medium-severity finding.
+    import bdd_forensics.benford as benford_mod
+
+    monkeypatch.setattr(benford_mod, "_conformity", lambda mad: "acceptable")
+    assert analyze_benford("x", _fabricated(300)) is None

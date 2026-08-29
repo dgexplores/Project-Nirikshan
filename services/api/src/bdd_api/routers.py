@@ -5,6 +5,7 @@ surface small and reviewable; every handler maps errors to the shared envelope.
 from __future__ import annotations
 
 import tempfile
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -32,7 +33,10 @@ router = APIRouter()
 
 # Reserve artifact ids between request-time and worker-persist time so
 # concurrent double-submits get a deterministic 409 instead of a clobber.
+# Lock is module-level and shared across requests, a per-request lock would
+# be uncontended by construction and enforce nothing.
 _INFLIGHT: set[str] = set()
+_INFLIGHT_LOCK = threading.Lock()
 
 
 # ---------- health ----------
@@ -73,12 +77,9 @@ async def ingest_artifact(
     validate_upload_filename(file.filename or "")
     settings = get_settings()
 
-    import threading
-
     with db_session() as session:
         exists = session.get(ArtifactRow, artifact_id) is not None
-    lock = threading.Lock()
-    with lock:
+    with _INFLIGHT_LOCK:
         if exists or artifact_id in _INFLIGHT:
             raise ConflictError("artifact_exists", f"artifact {artifact_id} already exists")
         _INFLIGHT.add(artifact_id)

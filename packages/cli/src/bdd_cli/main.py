@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from bdd_api.config import get_settings
+from bdd_ingestion.manifest import sha256_file
 
 
 def _bootstrap() -> None:
@@ -125,18 +126,25 @@ def cmd_ingest(args: argparse.Namespace) -> int:
         print(f"error: file not found: {path}", file=sys.stderr)
         return 1
 
-    artifact_id = args.artifact_id or f"art-{path.stem.lower().replace('_', '-')}-{abs(hash(path.read_bytes())) % 99999:05d}"
+    # Python's builtin hash() is randomized per-process, sha256 is not.
+    # The whole point of this default is that the same bytes always
+    # produce the same artifact id.
+    digest = sha256_file(path)[:8]
+    artifact_id = args.artifact_id or f"art-{path.stem.lower().replace('_', '-')}-{digest}"
     settings = get_settings()
 
     class EchoReporter(StepReporter):
-        def __init__(self) -> None:
+        def __init__(self, *, quiet: bool) -> None:
             super().__init__("cli")
+            self.quiet = quiet
 
         def start(self, name: str, detail: str | None = None) -> None:
             pass
 
         def done(self, name: str, detail: str | None = None) -> None:
-            print(f"  ✓ {name}: {detail or ''}")
+            # --json must be pure JSON on stdout for scripting, no mixed text.
+            if not self.quiet:
+                print(f"  ✓ {name}: {detail or ''}")
 
         def fail(self, name: str, detail: str) -> None:
             print(f"  ✗ {name}: {detail}", file=sys.stderr)
@@ -150,7 +158,7 @@ def cmd_ingest(args: argparse.Namespace) -> int:
             title=args.title,
             release_date=args.release_date,
             settings=settings,
-            reporter=EchoReporter(),
+            reporter=EchoReporter(quiet=args.json),
         )
     except Exception as exc:  # noqa: BLE001 - CLI boundary
         print(f"error: {exc}", file=sys.stderr)
@@ -227,17 +235,21 @@ def cmd_show(args: argparse.Namespace) -> int:
     if section == "fitness":
         _emit(row.fitness_json, True)
     if section == "lineage":
-        manifest = ArtifactManifest.model_validate(row.manifest_json)
-        profile = DatasetProfile.model_validate(row.profile_json) if row.profile_json else None
-        models = {"anomaly": AnomalyFinding, "contradiction": ContradictionFinding, "drift": DriftFinding, "consensus": ConsensusFinding, "benford": BenfordFinding}
-        linked = []
-        for frow in all_findings:
-            if args.artifact_id not in set(map(str, frow.artifact_ids or [])):
-                continue
-            model = models.get(frow.kind)
-            if model is not None:
-                linked.append(model.model_validate(frow.payload_json))
-        graph = build_lineage(manifest, profile, linked)
+        try:
+            manifest = ArtifactManifest.model_validate(row.manifest_json)
+            profile = DatasetProfile.model_validate(row.profile_json) if row.profile_json else None
+            models = {"anomaly": AnomalyFinding, "contradiction": ContradictionFinding, "drift": DriftFinding, "consensus": ConsensusFinding, "benford": BenfordFinding}
+            linked = []
+            for frow in all_findings:
+                if args.artifact_id not in set(map(str, frow.artifact_ids or [])):
+                    continue
+                model = models.get(frow.kind)
+                if model is not None:
+                    linked.append(model.model_validate(frow.payload_json))
+            graph = build_lineage(manifest, profile, linked)
+        except Exception as exc:  # noqa: BLE001 - CLI boundary
+            print(f"error: could not build lineage: {exc}", file=sys.stderr)
+            return 1
         _emit(json.loads(graph.model_dump_json(by_alias=True)), True)
     if section is None:
         # default: compact overview of everything
@@ -272,7 +284,7 @@ def cmd_findings(args: argparse.Namespace) -> int:
         query = query.where(FindingRow.kind == args.kind)
     if args.severity:
         query = query.where(FindingRow.severity == args.severity)
-    if args.status:
+    if args.status and args.status != "all":
         query = query.where(FindingRow.status == args.status)
     if args.q:
         like = f"%{args.q.lower()}%"

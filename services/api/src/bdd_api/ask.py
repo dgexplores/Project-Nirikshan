@@ -34,17 +34,22 @@ _STOPWORDS = {
     "show", "tell", "me", "about", "give", "list", "with", "by", "at", "as", "be", "been",
 }
 
-# Governance wording guard: BDD flags potential inconsistencies for review;
-# it must never assert wrongdoing.
+# Governance wording guard: BDD flags potential inconsistencies for review,
+# it must never assert wrongdoing. Covers English and Hindi since Ask
+# Detective is explicitly a bilingual (Hindi/English) feature.
 _BANNED_PATTERN = re.compile(
     r"\b(fraud|fraudulent|corrupt|corruption|guilty|culprit|scam|cheat(?:ed|ing)?|"
     r"embezzl\w*|fake|faked|forgery|falsif\w*|misappropriat\w+|is wrong|are wrong|"
-    r"committed a crime|criminal)\b",
+    r"committed a crime|criminal)\b|"
+    r"(भ्रष्टाचार|घोटाला|"
+    r"धोखाधड़ी|जालसाज़ी|"
+    r"दोषी|अपराधी|फ़र्ज़ी)",
     re.IGNORECASE,
 )
 _REFUSAL = (
     "I could not find enough stored evidence to answer that safely. "
-    "Upload a dataset or run a comparison first - I only report what the frozen artifacts support."
+    "Upload a dataset or run a comparison first - I only report what the frozen artifacts support.\n"
+    "मुझे सुरक्षित उत्तर देने के लिए पर्याप्त सबूत नहीं मिले। कृपया पहले कोई फ़ाइल अपलोड करें।"
 )
 
 
@@ -56,8 +61,43 @@ class EvidenceCard:
     snippet: str
 
 
+# A small, curated Hindi-to-English keyword bridge for retrieval. This is
+# not machine translation, just enough domain-word overlap for a Devanagari
+# question to reach the same evidence an equivalent English one would.
+# Stored data and column names stay in English/romanized form until real
+# Hindi NLU (Bhashini/Sarvam) lands, see README roadmap.
+_HINDI_ALIASES: dict[str, str] = {
+    "लाभार्थी": "beneficiaries",
+    "लाभार्थियों": "beneficiaries",
+    "जिला": "district",
+    "जिले": "district",
+    "गांव": "village",
+    "गाँव": "village",
+    "राशि": "amount",
+    "भुगतान": "payment",
+    "गुणवत्ता": "quality",
+    "समस्या": "issue",
+    "आंकड़े": "data",
+    "आंकड़ों": "data",
+    "तुलना": "compare",
+    "असामान्य": "unusual",
+    "गड़बड़ी": "anomaly",
+}
+
+
+_TOKEN_PATTERN = re.compile(r"[a-z0-9_]+|[ऀ-ॿ]+")
+
+
 def _tokens(text: str) -> list[str]:
-    return [t for t in re.findall(r"[a-z0-9_]+", text.lower()) if len(t) > 2 and t not in _STOPWORDS]
+    words = _TOKEN_PATTERN.findall(text.lower())
+    tokens: list[str] = []
+    for t in words:
+        alias = _HINDI_ALIASES.get(t)
+        if alias:
+            tokens.append(alias)
+        elif len(t) > 2 and t not in _STOPWORDS:
+            tokens.append(t)
+    return tokens
 
 
 def _collect_evidence(question: str, artifact_ids: list[str] | None) -> tuple[list[EvidenceCard], dict[str, str]]:
@@ -111,12 +151,25 @@ def _collect_evidence(question: str, artifact_ids: list[str] | None) -> tuple[li
     return top, titles
 
 
+_ROLE_MARKER = re.compile(r"(?im)^\s*(system|assistant|user)\s*:")
+
+
+def _sanitize_for_prompt(text: str) -> str:
+    """Evidence snippets can carry attacker-controlled text (a column name,
+    a quality-observation description) straight from an uploaded file. Flatten
+    it to one line and defuse fake role markers before it reaches the LLM
+    prompt, this is a floor, not a full injection defense.
+    """
+    flat = " ".join(text.split())
+    return _ROLE_MARKER.sub("[blocked]:", flat)
+
+
 def _llm_answer(question: str, evidence: list[EvidenceCard]) -> str | None:
     """Call OpenAI-compatible chat completions. Returns None on any failure."""
     settings = get_settings()
     if not (settings.llm_base_url and settings.llm_api_key and settings.llm_model):
         return None
-    blocks = "\n\n".join(f"[{c.ref}] ({c.locator}) {c.snippet}" for c in evidence)
+    blocks = "\n\n".join(f"[{c.ref}] ({c.locator}) {_sanitize_for_prompt(c.snippet)}" for c in evidence)
     system = (
         "You are the Bharat Data Detective analyst. You answer ONLY from the numbered evidence snippets.\n"
         "Rules:\n"
@@ -124,6 +177,7 @@ def _llm_answer(question: str, evidence: list[EvidenceCard]) -> str | None:
         "- Never invent numbers, sources or citations.\n"
         "- Describe potential inconsistencies neutrally; NEVER accuse anyone of fraud or wrongdoing; "
         "the system flags items for human review, it does not judge truth.\n"
+        "- Reply in the same language as the question (Hindi or English), citations like [E1] stay as is.\n"
         "- If the evidence is insufficient, reply exactly with INSUFFICIENT_EVIDENCE."
     )
     user = f"Question: {question}\n\nEvidence:\n{blocks}"
@@ -144,7 +198,10 @@ def _llm_answer(question: str, evidence: list[EvidenceCard]) -> str | None:
         )
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"].strip()
-        return None if content == "INSUFFICIENT_EVIDENCE" else content
+        # Smaller models often elaborate past the exact refusal token
+        # ("INSUFFICIENT_EVIDENCE, because..."), match the prefix, not the
+        # whole string, so the refusal still routes to the safe fallback.
+        return None if content.upper().startswith("INSUFFICIENT_EVIDENCE") else content
     except Exception:
         logger.exception("LLM call failed; falling back to deterministic synthesis")
         return None

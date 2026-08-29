@@ -109,7 +109,15 @@ def parse_fiscal_year(label: str) -> TemporalResolution:
 
     start = int(m.group("start"))
     end_raw = m.group("end")
-    end = start + 1 if len(end_raw) == 2 else int(end_raw)
+    # An Indian fiscal year always spans exactly one calendar-year boundary,
+    # so the end year is start+1 regardless of what the label states. Flag
+    # rather than silently swallow a label whose stated end digits disagree
+    # (a real-world sign of a typo or a genuinely non-fiscal-year range).
+    end = start + 1
+    stated_end = end_raw if len(end_raw) == 2 else str(int(end_raw))[-2:]
+    flags = ["fiscal_year"]
+    if stated_end != str(end)[-2:]:
+        flags.append("fiscal_year_label_inconsistent")
     fy = f"{start}-{str(end)[-2:]}"
 
     return TemporalResolution(
@@ -118,5 +126,5 @@ def parse_fiscal_year(label: str) -> TemporalResolution:
         fiscal_year=fy,
         granularity="fiscal_year",
         event_period=(date(start, 4, 1), date(end, 3, 31)),
-        comparability_flags=["fiscal_year"],
+        comparability_flags=flags,
     )

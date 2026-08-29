@@ -104,6 +104,25 @@ def test_ingest_and_show_roundtrip(capsys, seeded, tmp_path) -> None:
     assert "sales_lakh" in out
 
 
+def test_ingest_default_artifact_id_is_deterministic(capsys, seeded, tmp_path) -> None:
+    import json
+
+    content = "district,sales_lakh\nA,10\nB,20\n"
+    f1 = tmp_path / "sales_run1.csv"
+    f2 = tmp_path / "sales_run2.csv"
+    f1.write_text(content)
+    f2.write_text(content)
+
+    assert main(["ingest", str(f1), "--source-id", "SRC-DET", "--json"]) == 0
+    id1 = json.loads(capsys.readouterr().out)["artifact_id"]
+    assert main(["ingest", str(f2), "--source-id", "SRC-DET", "--json"]) == 0
+    id2 = json.loads(capsys.readouterr().out)["artifact_id"]
+
+    # Same bytes must produce the same id suffix regardless of filename.
+    # This used Python's per-process-randomized hash() before the fix.
+    assert id1.rsplit("-", 1)[1] == id2.rsplit("-", 1)[1]
+
+
 def test_unknown_finding_errors_cleanly(capsys, seeded) -> None:
     assert main(["finding", "nope-123"]).__class__ is int
     rc = main(["finding", "nope-123"])

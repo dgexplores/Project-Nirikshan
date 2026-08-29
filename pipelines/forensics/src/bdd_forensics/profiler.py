@@ -28,28 +28,28 @@ _VALUE_PATTERNS: dict[str, re.Pattern[str]] = {
     "voter_id": re.compile(r"^[A-Z]{3}\d{7}$"),
 }
 
-# Column-name signals. Keyed to a PiiHint type; value regex only used as a
-# confirmation when the name alone is ambiguous.
-_NAME_SIGNALS: dict[str, tuple[PII_TYPE, re.Pattern[str] | None]] = {
-    "aadhaar": ("aadhaar", None),
-    "aadhar": ("aadhaar", None),
-    "uid": ("aadhaar", None),
-    "pan": ("pan", None),
-    "pan_no": ("pan", None),
-    "pan_number": ("pan", None),
-    "mobile": ("mobile_phone", None),
-    "phone": ("mobile_phone", None),
-    "phone_no": ("mobile_phone", None),
-    "mobile_no": ("mobile_phone", None),
-    "email": ("email", None),
-    "e_mail": ("email", None),
-    "mail": ("email", None),
-    "account_no": ("bank_account", None),
-    "bank_account": ("bank_account", None),
-    "bank_ac": ("bank_account", None),
-    "passport": ("passport", None),
-    "epic": ("voter_id", None),
-    "voter": ("voter_id", None),
+# Column-name signals. Keyed to a PiiHint type - the name alone only
+# narrows down which value-shape pattern to check for confirmation.
+_NAME_SIGNALS: dict[str, PII_TYPE] = {
+    "aadhaar": "aadhaar",
+    "aadhar": "aadhaar",
+    "uid": "aadhaar",
+    "pan": "pan",
+    "pan_no": "pan",
+    "pan_number": "pan",
+    "mobile": "mobile_phone",
+    "phone": "mobile_phone",
+    "phone_no": "mobile_phone",
+    "mobile_no": "mobile_phone",
+    "email": "email",
+    "e_mail": "email",
+    "mail": "email",
+    "account_no": "bank_account",
+    "bank_account": "bank_account",
+    "bank_ac": "bank_account",
+    "passport": "passport",
+    "epic": "voter_id",
+    "voter": "voter_id",
 }
 
 
@@ -83,44 +83,25 @@ def _distribution(numeric: pl.Series) -> Distribution | None:
 
 def _pii_hints(name: str, series: pl.Series) -> list[PiiHint]:
     lower = name.strip().lower().replace(" ", "_")
-    hints: list[PiiHint] = []
-
-    hint_type, confirm = _NAME_SIGNALS.get(lower, (None, None))
+    hint_type = _NAME_SIGNALS.get(lower)
     non_null = series.drop_nulls()
     if hint_type is None or non_null.is_empty():
-        return hints
-    if confirm is not None:
-        matches = [v for v in non_null.to_list() if confirm.match(str(v))]
-        if not matches:
-            return hints
-        return [
-            PiiHint(
-                hint_type=hint_type,
-                column=name,
-                matched_values=len(matches),
-                sample_matches=list(dict.fromkeys(map(str, matches)))[:3],
-            )
-        ]
+        return []
 
-    # Name signals for identifier-like fields (aadhaar, pan, ...) count all
-    # non-null values as candidate columns pending value-shape confirmation.
-    pattern = _VALUE_PATTERNS.get(hint_type)
-    if pattern is not None:
-        matches = [v for v in non_null.to_list() if pattern.match(str(v))]
-        if matches:
-            return [
-                PiiHint(
-                    hint_type=hint_type,
-                    column=name,
-                    matched_values=len(matches),
-                    sample_matches=list(dict.fromkeys(map(str, matches)))[:3],
-                )
-            ]
+    # Name signal narrows the candidate type. Only confirm it as PII when
+    # at least one actual value matches that type's shape, a name match
+    # alone (e.g. a "mobile" column full of blanks or free text) is not
+    # evidence the column holds real PII.
+    pattern = _VALUE_PATTERNS[hint_type]
+    matches = [v for v in non_null.to_list() if pattern.match(str(v))]
+    if not matches:
+        return []
     return [
         PiiHint(
             hint_type=hint_type,
             column=name,
-            matched_values=len(non_null),
+            matched_values=len(matches),
+            sample_matches=list(dict.fromkeys(map(str, matches)))[:3],
         )
     ]
 
@@ -216,10 +197,18 @@ def _quality_observations(
 
 
 def _candidate_keys(df: pl.DataFrame) -> list[list[str]]:
-    """Single-column candidate keys from unique counts."""
+    """Single-column candidate keys from unique counts.
+
+    Requires zero nulls: n_unique() counts a single null as one distinct
+    value, so a column with one null and otherwise-unique values would
+    satisfy unique == height even though a null disqualifies a real key.
+    """
     keys: list[list[str]] = []
     for name in df.columns:
-        unique = df[name].n_unique()
+        col = df[name]
+        if col.null_count() > 0:
+            continue
+        unique = col.n_unique()
         if unique == df.height and unique > 1:
             keys.append([name])
     return keys[:10]

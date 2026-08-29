@@ -116,8 +116,9 @@ def _alignment_summary(report: dict | None) -> dict:
 
 
 def _delta(va: float, vb: float, state: str) -> float | None:
-    if state == "conflict" and max(va, vb) != 0:
-        return round((vb - va) / max(va, vb), 4)
+    scale = max(abs(va), abs(vb))
+    if state == "conflict" and scale != 0:
+        return round((vb - va) / scale, 4)
     if state == "explainable":
         return round(abs(vb - va), 4)
     return None

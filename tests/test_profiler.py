@@ -96,3 +96,20 @@ def test_no_pii_on_plain_data() -> None:
     df = pl.DataFrame({"district": ["Bareilly", "Meerut"], "year": [2021, 2022]})
     p = profile_dataset(dataset_id="ds-16", artifact_id="art-16", df=df)
     assert all(not c.pii_hints for c in p.columns)
+
+
+def test_pii_name_signal_without_value_match_yields_no_hint() -> None:
+    # Column name alone used to be enough to flag PII even when zero values
+    # actually matched that type's shape (e.g. a "mobile" column of free text).
+    df = pl.DataFrame({"mobile": ["not-a-number", "also-not-one", "still-not"]})
+    p = profile_dataset(dataset_id="ds-17", artifact_id="art-17", df=df)
+    hints = {c.name: c for c in p.columns}["mobile"].pii_hints
+    assert hints == []
+
+
+def test_candidate_key_excludes_column_with_null() -> None:
+    # n_unique() counts one null as a distinct value, so this used to pass
+    # unique == height even though a null disqualifies a real key.
+    df = pl.DataFrame({"id": [1, 2, None, 4], "v": [1, 2, 3, 4]})
+    p = profile_dataset(dataset_id="ds-18", artifact_id="art-18", df=df)
+    assert ["id"] not in p.candidate_keys

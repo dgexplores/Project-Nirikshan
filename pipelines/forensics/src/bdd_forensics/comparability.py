@@ -11,6 +11,8 @@ from typing import Literal
 
 import polars as pl
 
+from bdd_forensics.drift import REWORD_SIMILARITY, token_similarity
+
 ComparableState = Literal["comparable", "partial", "not_comparable", "unknown"]
 
 
@@ -77,10 +79,16 @@ def compare_units(
 def compare_definition(
     left_def: str | None, right_def: str | None
 ) -> tuple[ComparableState, str]:
+    """Same fuzzy-reword allowance as bdd_forensics.drift, so this gate and
+    the drift engine never disagree on whether two definitions still match.
+    """
     if left_def is None or right_def is None:
         return ("unknown", "definition card missing")
     if left_def.lower() == right_def.lower():
         return ("comparable", "same operational definition")
+    similarity = token_similarity(left_def, right_def)
+    if similarity >= REWORD_SIMILARITY:
+        return ("partial", f"definitions reworded (similarity {similarity:.2f}), verify intent is unchanged")
     return ("not_comparable", f"definitions differ: {left_def!r} vs {right_def!r}")
 
 
@@ -94,6 +102,8 @@ def build_comparability(
     right_fy: str | None = None,
     left_unit: str | None = None,
     right_unit: str | None = None,
+    left_scale: float = 1.0,
+    right_scale: float = 1.0,
     left_definition: str | None = None,
     right_definition: str | None = None,
 ) -> dict | None:
@@ -101,7 +111,7 @@ def build_comparability(
 
     Returns:
         A report dict keyed by 'geography', 'temporal', 'unit',
-        'definition', 'overall'; None if a pair is empty.
+        'definition', 'overall'. None if a pair is empty.
     """
     if left_df.is_empty() or right_df.is_empty():
         return None
@@ -110,7 +120,7 @@ def build_comparability(
         left_df, right_df, left_district_col, right_district_col
     )
     temporal, temporal_reason = compare_fiscal_years(left_fy, right_fy)
-    unit, unit_reason = compare_units(left_unit, right_unit)
+    unit, unit_reason = compare_units(left_unit, right_unit, left_scale, right_scale)
     definition, def_reason = compare_definition(left_definition, right_definition)
 
     overall: ComparableState

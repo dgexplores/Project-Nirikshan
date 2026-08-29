@@ -21,6 +21,15 @@ def test_tokenizer_drops_stopwords_and_short_tokens() -> None:
     assert "2024" in tokens
 
 
+def test_tokenizer_bridges_hindi_domain_words_to_english() -> None:
+    # Pure Devanagari used to tokenize to nothing at all (regex was ASCII
+    # only), so a genuine Hindi question always fell through to a refusal
+    # regardless of what evidence actually existed.
+    tokens = _tokens("बरेली में कितने लाभार्थी हैं")
+    assert "beneficiaries" in tokens
+    assert "बरेली" in tokens
+
+
 def test_deterministic_answer_cites_every_card() -> None:
     answer = _deterministic_answer("tell me about v", _cards(), {})
     for card in _cards():

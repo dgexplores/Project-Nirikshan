@@ -99,7 +99,9 @@ def analyze_benford(column: str, values: list[float], *, min_values: int = MIN_V
     mad = round(mad_sum / 9, 5)
     conformity = _conformity(mad)
 
-    if conformity == "close":
+    if conformity in ("close", "acceptable"):
+        # Nigrini's own terminology treats "acceptable" as normal, non-
+        # suspicious conformity, not a signal worth a reviewer's time.
         return None
 
     worst = sorted(deviations, key=lambda x: abs(x.excess), reverse=True)[:3]

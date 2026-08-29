@@ -140,6 +140,17 @@ def test_findings_review_flow(api: TestClient) -> None:
     assert bad.status_code == 422
 
 
+def test_analyze_handles_zero_baseline_yoy_finding(api: TestClient) -> None:
+    # A zero-baseline YoY finding carries score=None (percent change is
+    # undefined). run_anomalies used to sort all findings by abs(score)
+    # unconditionally and crashed with a real multi-district, multi-year
+    # file that happened to include one, this reproduces that shape.
+    csv = "district,year,amount\nA,2023,0\nA,2024,500\nB,2023,10\nB,2024,12\n"
+    _ingest(api, "art_zero_baseline", csv)
+    analyze = api.post("/artifacts/art_zero_baseline/analyze")
+    assert analyze.status_code == 200, analyze.text
+
+
 def test_compare_two_artifacts_produces_finding(api: TestClient) -> None:
     _ingest(api, "cmp_a", "district,total_inr\nA,100\nB,200\nC,300\n")
     _ingest(api, "cmp_b", "district,total_inr\nA,105\nB,210\nC,315\n")

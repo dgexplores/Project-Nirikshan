@@ -29,6 +29,7 @@ from bdd_forensics.definitions import infer_definition_cards
 from bdd_forensics.drift import detect_definition_drift
 from bdd_forensics.entity_resolution import geo_gate_fuzzy
 from bdd_forensics.fitness import compute_fitness
+from bdd_forensics.normalize import unit_scale
 from bdd_forensics.profiler import profile_dataset
 from bdd_ingestion.manifest import build_manifest
 from bdd_ingestion.parsers import ParseError, read_artifact
@@ -68,49 +69,82 @@ def stable_finding_id(kind: str, payload_json: dict[str, Any], scope: str) -> st
     return f"{kind}-{digest}"
 
 
+_DRIFT_TITLES = {
+    "unit": "The units used for '{concept}' changed",
+    "definition": "The definition of '{concept}' changed",
+    "denominator": "What '{concept}' is measured against changed",
+    "scope": "What's included in '{concept}' changed",
+}
+
+_COMPARABILITY_PLAIN = {
+    "comparable": "Still safe to compare directly.",
+    "partial": "Only partly comparable now, check before comparing directly.",
+    "not_comparable": "No longer safe to compare directly.",
+}
+
+
 def _title_and_summary(payload: Any) -> tuple[str, str]:
+    """Plain-language title and summary shown in the review queue.
+
+    Written for a first-time reader, not a data engineer. The full
+    technical detail (method, scores, raw evidence) still lives in the
+    finding's payload for anyone who wants it.
+    """
     if isinstance(payload, BenfordFinding):
-        worst = max(payload.digits, key=lambda d: abs(d.excess))
+        how_unusual = "very unusual" if payload.conformity == "nonconformity" else "somewhat unusual"
         return (
-            f"Benford screening: {payload.conformity} digit pattern in '{payload.column}'",
+            f"Unusual number pattern in '{payload.column}'",
             (
-                f"{payload.n_values} values; mean absolute deviation {payload.mad:.4f} vs Benford expectation. "
-                f"Largest deviation at digit {worst.digit} ({worst.excess:+.1%}). "
-                "Screening signal - review column semantics before acting."
+                f"We checked {payload.n_values} numbers in this column. Their pattern looks {how_unusual} "
+                "compared to what real, unmanipulated numbers usually look like. "
+                "This is a signal worth checking, not proof of a problem."
             ),
         )
     if isinstance(payload, AnomalyFinding):
-        pct = abs(payload.observed - payload.expected) / max(abs(payload.expected), 1e-9) * 100
+        where = ", ".join(f"{k}: {v}" for k, v in payload.slice.items()) or "overall"
+        if abs(payload.expected) < 1e-9:
+            # Zero baseline makes "% off" undefined (division blows up to a
+            # meaningless huge number), so state the comparison in plain terms instead.
+            return (
+                f"Unusual number for {payload.metric}",
+                f"We found {payload.observed:g}, but expected close to 0 for {where}.",
+            )
+        pct = abs(payload.observed - payload.expected) / abs(payload.expected) * 100
         return (
-            f"{payload.metric} outlier ({payload.method})",
-            f"Observed {payload.observed:g} vs expected {payload.expected:g} ({pct:.0f} off) in slice {json.dumps(payload.slice, default=str)}",
+            f"Unusual number for {payload.metric}",
+            f"We found {payload.observed:g}, but expected around {payload.expected:g} ({pct:.0f}% off) for {where}.",
         )
     if isinstance(payload, DriftFinding):
+        template = _DRIFT_TITLES.get(payload.drift_type, "How '{concept}' is measured changed")
+        title = template.format(concept=payload.concept_id)
+        plain = _COMPARABILITY_PLAIN.get(payload.comparability_decision, "")
         return (
-            f"Semantic drift: {payload.drift_type} on {payload.concept_id}",
-            f"{payload.comparability_decision} comparison (semantic impact {payload.semantic_impact:.2f}); evidence: {'; '.join(payload.evidence)}",
+            title,
+            f"{plain} How big a change: {payload.semantic_impact * 100:.0f}%.",
         )
     if isinstance(payload, ContradictionFinding):
         va, vb = payload.claim_a.get("value"), payload.claim_b.get("value")
-        verb = {
-            "conflict": "Contradiction between sources",
-            "explainable": "Explainable difference between sources",
-            "not_comparable": "Pair not comparable",
+        title = {
+            "conflict": "These two sources disagree",
+            "explainable": "Small difference between sources, likely explainable",
+            "not_comparable": "Can't compare these two sources yet",
         }[payload.reconciliation_status]
         return (
-            verb,
-            f"Claim A={va} vs claim B={vb}; alignment tests: {json.dumps(payload.alignment_tests, default=str)}",
+            title,
+            f"One reports {va}, the other reports {vb}.",
         )
     if isinstance(payload, ConsensusFinding):
-        verdict_text = (
-            "Independent corroboration"
-            if payload.verdict == "independent_corroboration"
-            else "Shared origin suspected"
-        )
+        if payload.verdict == "independent_corroboration":
+            return (
+                f"Confirmed by independent sources: {payload.metric}",
+                f"{payload.apparent_sources} source(s) reported this, and they really are independent of each other.",
+            )
         return (
-            f"{verdict_text}: {payload.metric}",
-            (f"{payload.apparent_sources} apparent source(s) trace to "
-             f"{payload.distinct_origins} distinct origin(s); diversity ratio {payload.diversity_ratio:.2f}"),
+            f"Looks like copies of one source: {payload.metric}",
+            (
+                f"{payload.apparent_sources} source(s) reported this, but they all trace back to just "
+                f"{payload.distinct_origins} original source. More reports doesn't mean more confirmation here."
+            ),
         )
     return ("finding", json.dumps(payload, default=str)[:500])
 
@@ -326,7 +360,12 @@ def run_compare(
     )
 
     temporal, temporal_reason = compare_fiscal_years(fy_a, fy_b)
-    unit_state, unit_reason = compare_units(unit_a, unit_b)
+    # Same unit label can still hide a different scale factor upstream.
+    # unit_scale returns None for a label it does not recognize, in which
+    # case 1.0 keeps prior behavior (label match is the only signal).
+    unit_state, unit_reason = compare_units(
+        unit_a, unit_b, unit_scale(unit_a) or 1.0, unit_scale(unit_b) or 1.0
+    )
     def_state, def_reason = compare_definition(definition_a or None, definition_b or None)
 
     states = [geo_state, temporal, unit_state, def_state]
@@ -438,12 +477,17 @@ def run_anomalies(artifact_id: str, job_id: str | None = None) -> int:
                 detect_yoy(metric=value_col, df=df, value_col=value_col, period_col=period_col, entity_col=entity_col)  # type: ignore[arg-type]
             )
 
-    # Engine ids are per-call local ("an-000"); re-key deterministically so
+    # Engine ids are per-call local ("an-000"), re-key deterministically so
     # ids stay unique across columns/methods and stable across reruns.
     # Cap volume so one noisy column cannot bury the rest of the queue.
-    findings = sorted(findings, key=lambda f: abs(f.score), reverse=True)[
-        :MAX_ANOMALY_FINDINGS_PER_ARTIFACT
-    ]
+    # score is None for a zero-baseline YoY case (percent change is
+    # undefined), rank those first rather than crashing the sort or
+    # silently dropping a real, high-severity finding off the cap.
+    findings = sorted(
+        findings,
+        key=lambda f: abs(f.score) if f.score is not None else float("inf"),
+        reverse=True,
+    )[:MAX_ANOMALY_FINDINGS_PER_ARTIFACT]
     findings = [
         f.model_copy(update={"finding_id": f"{f.method}-{f.metric}-{idx:03d}"})
         for idx, f in enumerate(findings)

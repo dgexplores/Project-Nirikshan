@@ -57,3 +57,14 @@ def test_fy_stable_ids() -> None:
     a = parse_fiscal_year("some label")
     b = parse_fiscal_year("some label")
     assert a.resolution_id == b.resolution_id
+
+
+def test_fy_label_inconsistent_end_year_flagged() -> None:
+    # An Indian fiscal year always spans exactly one year boundary, so
+    # "2024-27" is a data-entry defect, not a valid start+3 fiscal year.
+    # The end year still resolves to 2025, but the mismatch must be
+    # surfaced rather than the label's typo being silently accepted.
+    t = parse_fiscal_year("FY 2024-27")
+    assert t.fiscal_year == "2024-25"
+    assert t.event_period == (date(2024, 4, 1), date(2025, 3, 31))
+    assert "fiscal_year_label_inconsistent" in t.comparability_flags

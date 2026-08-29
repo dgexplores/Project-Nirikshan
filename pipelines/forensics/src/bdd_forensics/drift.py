@@ -48,7 +48,7 @@ def _tokens(text: str) -> set[str]:
     return {t for t in re.split(r"[^a-z0-9]+", text.lower()) if t}
 
 
-def _token_similarity(a: str, b: str) -> float:
+def token_similarity(a: str, b: str) -> float:
     """Jaccard similarity over word tokens. Order-insensitive and robust
     to punctuation, which a raw string diff is not."""
     ta, tb = _tokens(a), _tokens(b)
@@ -133,7 +133,7 @@ def _unit_drift(before: str | None, after: str | None) -> _Drift | None:
 def _definition_drift(before: str, after: str) -> _Drift | None:
     if _norm(before) == _norm(after):
         return None
-    sim = _token_similarity(before, after)
+    sim = token_similarity(before, after)
     if sim >= REWORD_SIMILARITY:
         return _Drift(
             "definition",
@@ -240,4 +240,4 @@ def overall_decision(findings: list[DriftFinding]) -> str:
     return "comparable"
 
 
-__all__ = ["DRIFT_VERSION", "detect_definition_drift", "overall_decision"]
+__all__ = ["DRIFT_VERSION", "REWORD_SIMILARITY", "detect_definition_drift", "overall_decision", "token_similarity"]

@@ -71,6 +71,34 @@ def test_unit_scale_partial() -> None:
     assert "scale" in reason
 
 
+def test_definition_reworded_is_partial() -> None:
+    # comparability.py used to binary-match definitions while drift.py
+    # allowed 0.8 token-similarity as a rewording, the same pair of
+    # definitions could get a harsher verdict from one engine than the
+    # other. Both now share the same fuzzy-match rule.
+    from bdd_forensics.comparability import compare_definition
+
+    state, reason = compare_definition(
+        "number of paid beneficiaries total", "number of paid beneficiaries"
+    )
+    assert state == "partial"
+    assert "reworded" in reason
+
+
+def test_build_comparability_unit_scale_wired_through() -> None:
+    # left_scale/right_scale used to be accepted by compare_units but never
+    # actually passed by build_comparability, so this branch was dead.
+    left = _districts("Bareilly")
+    right = _districts("Bareilly")
+    report = build_comparability(
+        left_df=left, right_df=right,
+        left_district_col="district", right_district_col="district",
+        left_unit="count", right_unit="count",
+        left_scale=1.0, right_scale=100_000.0,
+    )
+    assert report["unit"]["state"] == "partial"
+
+
 def test_empty_pair_none() -> None:
     report = build_comparability(
         left_df=pl.DataFrame({"a": []}),

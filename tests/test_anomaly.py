@@ -25,6 +25,17 @@ def test_zscore_requires_three_rows() -> None:
     assert detect_zscore(metric="ben", df=df, value_col="ben") == []
 
 
+def test_zscore_handles_nulls_without_crashing() -> None:
+    normal = [100, 102, 99, 101, 98, 103, 100, 101, 99, 102]
+    df = pl.DataFrame(
+        {"district": [str(i) for i in range(len(normal) + 2)],
+         "ben": [*normal, None, 5000]}
+    )
+    findings = detect_zscore(metric="ben", df=df, value_col="ben", key_col="district")
+    assert len(findings) == 1
+    assert findings[0].observed == 5000.0
+
+
 def test_iqr_catches_extreme_tail() -> None:
     df = pl.DataFrame(
         {"district": list("ABCDE"), "amt": [10, 12, 11, 13, 999]}
@@ -59,6 +70,27 @@ def test_yoy_ignores_small_changes() -> None:
     )
     findings = detect_yoy(metric="ben", df=df, value_col="ben", period_col="year")
     assert findings == []
+
+
+def test_iqr_flags_deviation_from_degenerate_fence() -> None:
+    # Middle 50% is a single repeated value (iqr == 0). This used to go
+    # silent even though 999 is an obvious deviation from a flat baseline.
+    df = pl.DataFrame({"district": list("ABCDE"), "amt": [10, 10, 10, 10, 999]})
+    findings = detect_iqr(metric="amt", df=df, value_col="amt", key_col="district")
+    assert len(findings) == 1
+    assert findings[0].slice == {"district": "E"}
+
+
+def test_yoy_zero_baseline_flagged_without_inf() -> None:
+    # A zero prior-period baseline used to compute an inf ratio, which
+    # serializes to a misleading null score with no explanation.
+    df = pl.DataFrame({"year": [2021, 2022, 2023], "ben": [0, 0, 5000]})
+    findings = detect_yoy(metric="ben", df=df, value_col="ben", period_col="year")
+    assert len(findings) == 1
+    f = findings[0]
+    assert f.severity == "high"
+    assert f.score is None
+    assert "baseline was zero" in f.caveats[0]
 
 
 def test_investigate_conflict() -> None:
