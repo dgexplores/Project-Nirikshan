@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { formatBytes } from "@/components/AnimatedNumber";
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { HelpBanner } from "@/components/OnboardingStepper";
-import { HashText, PageHeader } from "@/components/PageChrome";
+import { ArrowIcon, HashText, PageHeader } from "@/components/PageChrome";
 import { ProgressSteps } from "@/components/ProgressSteps";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -16,9 +16,17 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Panel } from "@/components/ui/Panel";
 import { listArtifacts, uploadArtifact, pollJob, type ArtifactSummary } from "@/lib/api";
 import type { Job } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, gradeToneClass } from "@/lib/utils";
 
 const ACCEPT = ".csv,.tsv,.xlsx,.json,.jsonl,.parquet";
+
+function UploadIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <path d="M12 16V4M12 4 7 9M12 4l5 5M5 20h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 export default function DatasetsPage() {
   const router = useRouter();
@@ -71,7 +79,7 @@ export default function DatasetsPage() {
       });
       const final = await pollJob(accepted.job_id, setJob);
       if (final.status === "failed") {
-        setUploadError(final.error || "ingest failed");
+        setUploadError(final.error || "This file could not be checked. Please try again.");
       } else {
         const newId = accepted.artifact_id;
         setFile(null);
@@ -88,39 +96,31 @@ export default function DatasetsPage() {
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Dashboard", href: "/" }, { label: "Datasets" }]} />
+      <Breadcrumb items={[{ label: "Overview", href: "/" }, { label: "Your files" }]} />
       <PageHeader
-        eyebrow={
-          <>
-            <span className="text-[#22d3ee]">EVIDENCE STORE</span>
-            <span className="text-white/20">·</span>
-            <span>{items ? `${items.length} frozen artifacts` : "loading…"}</span>
-            <span className="hidden text-white/20 sm:inline">·</span>
-            <span className="hidden sm:inline">SHA-256 · immutable · reproducible</span>
-          </>
-        }
-        title="Datasets"
-        subtitle="Every upload is hashed (SHA-256), frozen immutably, profiled and scored. Raw bytes are never modified — lineage is the source of truth."
+        eyebrow={<span>{items ? `${items.length} files uploaded` : "Loading…"}</span>}
+        title="Your files"
+        subtitle="Every file you upload gets a permanent, verified copy that can't be changed later. We check its quality automatically."
       />
       <HelpBanner
-        title="Forensic ingest — Drop on the left → frozen row appears on the right → click to inspect lineage"
-        desc="After ingest you are auto-redirected to detail (profile, lineage, fitness). All evidence refs are hashes, not filenames."
+        title="Drop a file on the left, see it appear on the right"
+        desc="After it's checked, we'll take you straight to its details: quality, where it came from, and its score."
         href="/findings"
-        cta="Open Findings"
+        cta="See problems found"
       />
 
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-        {/* Ingest rail – sticky but compact */}
-        <Panel className="h-fit lg:sticky lg:top-[68px]">
+        {/* Upload panel */}
+        <Panel className="h-fit lg:sticky lg:top-[84px]">
           <div className="flex items-center justify-between">
-            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-white/45">Ingest artifact</h2>
-            <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 font-mono text-[10px] text-white/35">max 200 MB</span>
+            <h2 className="text-sm font-semibold text-[var(--foreground)]">Upload a file</h2>
+            <span className="rounded-full bg-[var(--background)] px-2 py-0.5 text-xs text-[var(--foreground-muted)]">up to 200 MB</span>
           </div>
 
           <div
             role="button"
             tabIndex={0}
-            aria-label="Choose a file to ingest"
+            aria-label="Choose a file to upload"
             onClick={() => inputRef.current?.click()}
             onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
             onDragOver={(e) => {
@@ -136,14 +136,14 @@ export default function DatasetsPage() {
             }}
             className={cn(
               "mt-3 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-6 text-center transition sm:p-7",
-              dragOver ? "border-[#f59e0b] bg-[#f59e0b]/10" : "border-white/14 hover:border-white/25 hover:bg-white/[0.02]",
+              dragOver ? "border-[var(--brand)] bg-[var(--brand-soft)]" : "border-[var(--border-strong)] hover:border-[var(--brand)]/50 hover:bg-[var(--background)]",
             )}
           >
-            <motion.span animate={dragOver ? { scale: 1.12 } : { scale: 1 }} className="text-2xl" aria-hidden>
-              ⬆
+            <motion.span animate={dragOver ? { scale: 1.12 } : { scale: 1 }} className="flex size-9 items-center justify-center rounded-full bg-[var(--brand-soft)] text-[var(--brand)]">
+              <UploadIcon className="size-4" />
             </motion.span>
-            <span className="max-w-[22ch] truncate text-sm font-medium">{file ? file.name : "Drop a dataset or click"}</span>
-            <span className="text-xs text-white/35">CSV · TSV · XLSX · JSON · JSONL · Parquet</span>
+            <span className="max-w-[22ch] truncate text-sm font-medium">{file ? file.name : "Drop a file here, or click to choose"}</span>
+            <span className="text-xs text-[var(--foreground-faint)]">CSV, TSV, Excel, JSON, or Parquet</span>
             <input
               ref={inputRef}
               type="file"
@@ -165,21 +165,21 @@ export default function DatasetsPage() {
                 className="overflow-hidden"
               >
                 <div className="mt-4 space-y-3">
-                  <label className="block text-xs font-medium uppercase tracking-wider text-white/40">
-                    Artifact ID *
-                    <Input value={artifactId} onChange={(e) => setArtifactId(e.target.value)} className="mt-1 font-mono text-xs" required />
+                  <label className="block text-sm font-medium text-[var(--foreground-muted)]">
+                    A short ID for this file *
+                    <Input value={artifactId} onChange={(e) => setArtifactId(e.target.value)} className="mt-1.5 text-sm" required />
                   </label>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-white/40">
-                    Source ID *
-                    <Input value={sourceId} onChange={(e) => setSourceId(e.target.value)} className="mt-1 font-mono text-xs" placeholder="SRC-…" required />
+                  <label className="block text-sm font-medium text-[var(--foreground-muted)]">
+                    Where is it from? *
+                    <Input value={sourceId} onChange={(e) => setSourceId(e.target.value)} className="mt-1.5 text-sm" placeholder="e.g. Ministry portal" required />
                   </label>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-white/40">
-                    Title
-                    <Input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 text-sm" />
+                  <label className="block text-sm font-medium text-[var(--foreground-muted)]">
+                    Title (optional)
+                    <Input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1.5 text-sm" />
                   </label>
-                  <label className="block text-xs font-medium uppercase tracking-wider text-white/40">
-                    Release / period label
-                    <Input value={releaseDate} onChange={(e) => setReleaseDate(e.target.value)} className="mt-1 text-sm" placeholder="FY 2024-25" />
+                  <label className="block text-sm font-medium text-[var(--foreground-muted)]">
+                    Time period (optional)
+                    <Input value={releaseDate} onChange={(e) => setReleaseDate(e.target.value)} className="mt-1.5 text-sm" placeholder="e.g. FY 2024-25" />
                   </label>
                   <Button
                     onClick={handleUpload}
@@ -188,13 +188,12 @@ export default function DatasetsPage() {
                   >
                     {!!job && job.status === "running" ? (
                       <>
-                        <Spinner className="size-3.5" /> Analyzing…
+                        <Spinner className="size-3.5" /> Checking your file…
                       </>
                     ) : (
-                      "Ingest & analyze"
+                      "Upload and check"
                     )}
                   </Button>
-                  <p className="text-center text-[11px] leading-relaxed text-white/30">Frozen on write · hash + parser version → reproducible profile.</p>
                 </div>
               </motion.div>
             )}
@@ -206,7 +205,7 @@ export default function DatasetsPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="mt-3 rounded-lg border border-[#f87171]/30 bg-[#f87171]/10 px-3 py-2 text-xs text-[#f87171]"
+                className="mt-3 rounded-xl border border-[var(--critical)]/25 bg-[var(--critical-soft)] px-3.5 py-2.5 text-sm text-[var(--critical)]"
               >
                 {uploadError}
               </motion.p>
@@ -219,7 +218,7 @@ export default function DatasetsPage() {
           </AnimatePresence>
         </Panel>
 
-        {/* Dense ledger – table-like rows */}
+        {/* File list */}
         <div className="min-w-0">
           {!items ? (
             <div className="flex justify-center py-16">
@@ -227,24 +226,13 @@ export default function DatasetsPage() {
             </div>
           ) : (
             <div className="panel overflow-hidden">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] bg-white/[0.015] px-3 py-2.5 sm:px-4">
-                <h2 className="text-[11px] font-semibold uppercase tracking-widest text-white/45">
-                  Frozen ledger · {items.length} artifacts
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-3">
+                <h2 className="text-sm font-semibold text-[var(--foreground)]">
+                  {items.length} file{items.length === 1 ? "" : "s"} uploaded
                 </h2>
-                <span className="hidden font-mono text-[11px] text-white/30 sm:inline">scan: hash · fitness · lineage →</span>
-                <span className="font-mono text-[11px] text-white/30 sm:hidden">hash · fitness →</span>
               </div>
 
-              {/* Column header – hidden at 390, visible sm */}
-              <div className="hidden grid-cols-[1fr_92px_84px_52px_36px] items-center gap-2 border-b border-white/[0.06] bg-white/[0.015] px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/30 sm:grid sm:px-4">
-                <span>Dataset / evidence ref</span>
-                <span className="text-right">Rows × cols</span>
-                <span className="text-right">Size</span>
-                <span className="text-center">Flags</span>
-                <span className="text-center">Fit</span>
-              </div>
-
-              <div className="divide-y divide-white/[0.05]">
+              <div className="divide-y divide-[var(--border)]">
                 <AnimatePresence initial={false}>
                   {items.map((art, i) => (
                     <motion.div
@@ -256,71 +244,39 @@ export default function DatasetsPage() {
                     >
                       <Link
                         href={`/datasets/${encodeURIComponent(art.artifact_id)}`}
-                        className="group flex items-center gap-3 px-3 py-3 transition hover:bg-white/[0.022] focus-visible:outline-none sm:grid sm:grid-cols-[1fr_92px_84px_52px_36px] sm:gap-2 sm:px-4"
+                        className="group flex items-center gap-3 px-4 py-3.5 transition hover:bg-[var(--background)] focus-visible:outline-none"
                       >
-                        {/* Primary: identity + evidence refs */}
-                        <div className="min-w-0 flex-1 sm:min-w-0">
-                          <div className="truncate text-sm font-medium leading-tight group-hover:text-[#f59e0b]">{art.title || art.artifact_id}</div>
-                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                            <span className="inline-flex max-w-[14ch] truncate rounded bg-white/[0.04] px-1.5 py-0.5 font-mono text-[11px] text-white/45 sm:max-w-none">
-                              {art.artifact_id}
-                            </span>
-                            <span className="hidden sm:inline-flex">
-                              <HashText hash={art.sha256} />
-                            </span>
-                            <span className="inline-flex font-mono text-[11px] text-white/20 sm:hidden">· {art.sha256.slice(0, 8)}…</span>
-                            {art.release_date && (
-                              <span className="hidden rounded border border-white/10 bg-white/[0.03] px-1.5 py-0.5 font-mono text-[11px] text-white/40 sm:inline-flex">
-                                {art.release_date}
-                              </span>
-                            )}
-                          </div>
-                          {/* Mobile secondary line – collapsed metadata */}
-                          <div className="mt-1 flex items-center gap-2 font-mono text-[11px] text-white/30 sm:hidden">
-                            <span>{art.row_count !== null ? `${art.row_count.toLocaleString("en-IN")}×${art.column_count ?? "—"}` : "—"}</span>
-                            <span className="text-white/15">·</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[15px] font-medium leading-tight group-hover:text-[var(--brand)]">{art.title || art.artifact_id}</div>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-[var(--foreground-muted)]">
+                            <span>{art.row_count !== null ? `${art.row_count.toLocaleString("en-IN")} rows` : "Checking…"}</span>
+                            <span className="text-[var(--foreground-faint)]">·</span>
                             <span>{formatBytes(art.byte_size)}</span>
-                            {art.quality_flag_count > 0 && <span className="text-[#fbbf24]">· {art.quality_flag_count} flags</span>}
+                            {art.quality_flag_count > 0 && (
+                              <>
+                                <span className="text-[var(--foreground-faint)]">·</span>
+                                <span className="text-[var(--medium)]">{art.quality_flag_count} thing{art.quality_flag_count === 1 ? "" : "s"} to check</span>
+                              </>
+                            )}
+                            <span className="hidden sm:inline"><HashText hash={art.sha256} /></span>
                           </div>
                         </div>
 
-                        {/* Desktop columns – hidden at 390, preserved in detail */}
-                        <span className="hidden text-right font-mono text-xs tabular-nums text-white/50 sm:block">
-                          {art.row_count !== null ? `${art.row_count.toLocaleString("en-IN")}×${art.column_count ?? "—"}` : "—"}
-                        </span>
-                        <span className="hidden text-right font-mono text-xs text-white/35 sm:block">{formatBytes(art.byte_size)}</span>
-                        <span className="hidden justify-center sm:flex">
-                          {art.quality_flag_count > 0 ? (
-                            <span className="rounded-full border border-[#fbbf24]/25 bg-[#fbbf24]/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-[#fbbf24]">{art.quality_flag_count}</span>
-                          ) : (
-                            <span className="font-mono text-[11px] text-white/20">—</span>
-                          )}
-                        </span>
-
-                        {/* Fitness – always visible (primary scan + action) */}
-                        <span className="flex shrink-0 items-center gap-2">
+                        <div className="flex shrink-0 items-center gap-2.5">
                           {art.fitness_grade ? (
                             <span
-                              className={`inline-flex size-8 items-center justify-center rounded-lg border font-mono text-sm font-bold ${
-                                ["A", "B"].includes(art.fitness_grade)
-                                  ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-400"
-                                  : art.fitness_grade === "C"
-                                    ? "border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24]"
-                                    : "border-[#fb923c]/30 bg-[#fb923c]/10 text-[#fb923c]"
-                              }`}
-                              title={`Fitness ${art.fitness_grade} · ${art.fitness_score ?? ""}`}
+                              className={cn("inline-flex size-9 items-center justify-center rounded-lg border text-sm font-bold", gradeToneClass(art.fitness_grade))}
+                              title={`Quality grade ${art.fitness_grade}`}
                             >
                               {art.fitness_grade}
                             </span>
                           ) : (
-                            <span className="inline-flex size-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.03]">
+                            <span className="inline-flex size-9 items-center justify-center rounded-lg border border-[var(--border)] bg-white">
                               <Spinner className="size-4" />
                             </span>
                           )}
-                          <span className="inline-flex size-6 items-center justify-center rounded-full border border-white/10 bg-white/[0.03] text-white/25 transition group-hover:border-[#f59e0b]/30 group-hover:bg-[#f59e0b]/10 group-hover:text-[#f59e0b]" aria-hidden>
-                            →
-                          </span>
-                        </span>
+                          <ArrowIcon className="size-4 text-[var(--foreground-faint)] transition group-hover:text-[var(--brand)]" />
+                        </div>
                       </Link>
                     </motion.div>
                   ))}
@@ -328,16 +284,15 @@ export default function DatasetsPage() {
               </div>
 
               {items.length === 0 && (
-                <div className="px-4 py-10 text-center">
-                  <div className="text-sm font-medium text-white/60">No artifacts yet — ingest first evidence</div>
-                  <p className="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-white/35">
-                    Drop a dataset on the left. It will be hashed (SHA-256), frozen immutably and profiled — then findings can be generated and reviewed in the queue.
+                <div className="px-4 py-12 text-center">
+                  <div className="text-[15px] font-medium text-[var(--foreground)]">No files yet</div>
+                  <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-[var(--foreground-muted)]">
+                    Drop a file on the left to get started. We&apos;ll save a safe copy and check its quality automatically.
                   </p>
                 </div>
               )}
             </div>
           )}
-          {items && items.length > 0 && <p className="mt-2 text-center text-[11px] text-white/25">Tip: hash is the evidence locator — click any row to see lineage &amp; profile.</p>}
         </div>
       </div>
     </div>

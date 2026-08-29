@@ -1,7 +1,12 @@
 "use client";
 
-import { animate, useInView } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
+const DURATION_MS = 1100;
 
 export function AnimatedNumber({
   value,
@@ -12,22 +17,29 @@ export function AnimatedNumber({
   decimals?: number;
   className?: string;
 }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-40px" });
   const [display, setDisplay] = useState(0);
 
   useEffect(() => {
-    if (!inView) return;
-    const controls = animate(0, value, {
-      duration: 1.1,
-      ease: [0.22, 1, 0.36, 1],
-      onUpdate: (v) => setDisplay(v),
-    });
-    return () => controls.stop();
-  }, [inView, value]);
+    const start = Date.now();
+    let frame = 0;
+    const tick = () => {
+      const t = Math.min((Date.now() - start) / DURATION_MS, 1);
+      setDisplay(value * easeOutCubic(t));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    // Backgrounded or unfocused tabs throttle requestAnimationFrame, in
+    // some cases down to a rate that never reaches t=1. This guarantees
+    // the real value lands even if the animation itself gets stalled.
+    const settle = setTimeout(() => setDisplay(value), DURATION_MS + 150);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(settle);
+    };
+  }, [value]);
 
   return (
-    <span ref={ref} className={className}>
+    <span className={className}>
       {display.toLocaleString("en-IN", {
         maximumFractionDigits: decimals,
         minimumFractionDigits: decimals,

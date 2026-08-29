@@ -2,19 +2,28 @@ import type { Severity } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const STYLES: Record<Severity, string> = {
-  info: "text-[#94a3b8] border-[#94a3b8]/40 bg-[#94a3b8]/10",
-  low: "text-[#38bdf8] border-[#38bdf8]/40 bg-[#38bdf8]/10",
-  medium: "text-[#fbbf24] border-[#fbbf24]/40 bg-[#fbbf24]/10",
-  high: "text-[#fb923c] border-[#fb923c]/40 bg-[#fb923c]/10",
-  critical: "text-[#f87171] border-[#f87171]/40 bg-[#f87171]/10",
+  info: "text-[var(--info)] border-[var(--info)]/25 bg-[var(--info-soft)]",
+  low: "text-[var(--low)] border-[var(--low)]/25 bg-[var(--low-soft)]",
+  medium: "text-[var(--medium)] border-[var(--medium)]/25 bg-[var(--medium-soft)]",
+  high: "text-[var(--high)] border-[var(--high)]/25 bg-[var(--high-soft)]",
+  critical: "text-[var(--critical)] border-[var(--critical)]/25 bg-[var(--critical-soft)]",
 };
 
-const DOTS: Record<Severity, string> = {
-  info: "bg-[#94a3b8]",
-  low: "bg-[#38bdf8]",
-  medium: "bg-[#fbbf24]",
-  high: "bg-[#fb923c]",
-  critical: "bg-[#f87171]",
+export const SEVERITY_DOT_CLASS: Record<Severity, string> = {
+  info: "bg-[var(--info)]",
+  low: "bg-[var(--low)]",
+  medium: "bg-[var(--medium)]",
+  high: "bg-[var(--high)]",
+  critical: "bg-[var(--critical)]",
+};
+
+// Plain-language read on how serious each level is, shown as a tooltip.
+const HINTS: Record<Severity, string> = {
+  info: "Just for your information",
+  low: "Small, probably not urgent",
+  medium: "Worth a look",
+  high: "Should check soon",
+  critical: "Check this first",
 };
 
 const LABELS: Record<Severity, string> = {
@@ -34,16 +43,14 @@ export function SeverityBadge({
 }) {
   return (
     <span
+      title={HINTS[severity]}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
+        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold",
         STYLES[severity],
         className,
       )}
     >
-      <span
-        aria-hidden
-        className={cn("size-1.5 rounded-full", DOTS[severity])}
-      />
+      <span aria-hidden className={cn("size-1.5 rounded-full", SEVERITY_DOT_CLASS[severity])} />
       {LABELS[severity]}
     </span>
   );

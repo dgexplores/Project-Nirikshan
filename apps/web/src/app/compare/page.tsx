@@ -13,12 +13,19 @@ import { Panel } from "@/components/ui/Panel";
 import { compareArtifacts, listArtifacts, getProfile, type ArtifactSummary } from "@/lib/api";
 import type { CompareResponse, DatasetProfile } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { GATE_LABEL, GATE_STATE_LABEL } from "@/lib/labels";
+
+const OVERALL_LABEL: Record<string, string> = {
+  comparable: "Yes, you can compare these",
+  partial: "Only partly comparable",
+  not_comparable: "No, not comparable yet",
+};
 
 const GATE_STATE_CLASS: Record<string, string> = {
-  comparable: "border-emerald-400/30 bg-emerald-400/10 text-emerald-400",
-  partial: "border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24]",
-  not_comparable: "border-[#fb923c]/30 bg-[#fb923c]/10 text-[#fb923c]",
-  unknown: "border-white/12 text-white/40 bg-white/[0.02]",
+  comparable: "border-[var(--good)]/25 bg-[var(--good-soft)] text-[var(--good)]",
+  partial: "border-[var(--medium)]/25 bg-[var(--medium-soft)] text-[var(--medium)]",
+  not_comparable: "border-[var(--high)]/25 bg-[var(--high-soft)] text-[var(--high)]",
+  unknown: "border-[var(--border-strong)] text-[var(--foreground-muted)] bg-[var(--background)]",
 };
 
 function numericColumns(profile: DatasetProfile | null): string[] {
@@ -85,53 +92,38 @@ export default function ComparePage() {
 
   if (error && !result && !artifacts) return <ErrorState message={error} onRetry={() => setError(null)} />;
 
-  const overallTone = result
-    ? result.overall === "comparable"
-      ? "border-emerald-400/25 bg-emerald-400/[0.06] text-emerald-400"
-      : result.overall === "partial"
-        ? "border-[#fbbf24]/25 bg-[#fbbf24]/[0.06] text-[#fbbf24]"
-        : "border-[#fb923c]/25 bg-[#fb923c]/[0.06] text-[#fb923c]"
-    : "";
+  const overallTone = result ? GATE_STATE_CLASS[result.overall] ?? GATE_STATE_CLASS.unknown : "";
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Dashboard", href: "/" }, { label: "Compare" }]} />
+      <Breadcrumb items={[{ label: "Overview", href: "/" }, { label: "Compare" }]} />
       <HelpBanner
-        title="Cross-source comparison — gates first, reconciliation second"
-        desc="Pick two artifacts + same measure. Gates check geography/period/unit/definition before any number is reconciled. Blocked = do not compare."
+        title="We check they're comparable before comparing numbers"
+        desc="Pick two files and the same column. We make sure they mean the same thing (same place, time period, and units) before comparing them."
         href="/datasets"
-        cta="Datasets"
+        cta="Your files"
       />
       <PageHeader
-        eyebrow={
-          <>
-            <span className="text-[#22d3ee]">RECONCILIATION LAB</span>
-            <span className="text-white/20">·</span>
-            <span>gates → totals → explanations</span>
-            <span className="hidden text-white/20 sm:inline">·</span>
-            <span className="hidden sm:inline">never declares a side wrong</span>
-          </>
-        }
-        title="Cross-source comparison"
-        subtitle="Comparability gates run first: geography, period, unit and definition. Only a comparable pair gets reconciled — and neither side is ever declared 'wrong'."
+        title="Compare two files"
+        subtitle="We never say one side is wrong, we just check whether the two files can be fairly compared, and show you what we found."
         meta={
           artifacts ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 font-mono text-xs text-white/45">{artifacts.length} artifacts available</span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-sm text-[var(--foreground-muted)]">{artifacts.length} files available</span>
           ) : undefined
         }
       />
 
       {!artifacts?.length ? (
         <Panel>
-          <p className="text-center text-sm text-white/40">Ingest at least two datasets first — need two hashes to compare.</p>
+          <p className="text-center text-sm text-[var(--foreground-muted)]">Upload at least two files first so you have something to compare.</p>
         </Panel>
       ) : (
         <>
           <Panel className="mb-5 p-4">
             <div className="grid items-end gap-3 md:grid-cols-[1fr_1fr_auto_1fr_1fr_auto]">
-              <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-white/35">
-                Source A · artifact
-                <Select value={aId} onChange={(e) => setAId(e.target.value)} className="mt-1.5 font-mono text-xs">
+              <label className="block text-sm font-medium text-[var(--foreground-muted)]">
+                File A
+                <Select value={aId} onChange={(e) => setAId(e.target.value)} className="mt-1.5 text-sm">
                   {artifacts.map((a) => (
                     <option key={a.artifact_id} value={a.artifact_id}>
                       {a.title || a.artifact_id}
@@ -139,9 +131,9 @@ export default function ComparePage() {
                   ))}
                 </Select>
               </label>
-              <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-white/35">
-                Measure A
-                <Select value={colA} onChange={(e) => setColA(e.target.value)} className="mt-1.5 font-mono text-xs">
+              <label className="block text-sm font-medium text-[var(--foreground-muted)]">
+                Column to compare
+                <Select value={colA} onChange={(e) => setColA(e.target.value)} className="mt-1.5 text-sm">
                   {colsA.map((c) => (
                     <option key={c} value={c}>
                       {c}
@@ -149,15 +141,12 @@ export default function ComparePage() {
                   ))}
                 </Select>
               </label>
-              <span className="hidden pb-2 text-center font-mono text-lg text-[#f59e0b] md:block" aria-hidden>
-                ⇄
+              <span className="hidden pb-2.5 text-center text-[var(--foreground-faint)] md:block" aria-hidden>
+                vs
               </span>
-              <span className="pb-1 text-center font-mono text-sm text-[#f59e0b] md:hidden" aria-hidden>
-                ↕ A ⇄ B
-              </span>
-              <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-white/35">
-                Source B · artifact
-                <Select value={bId} onChange={(e) => setBId(e.target.value)} className="mt-1.5 font-mono text-xs">
+              <label className="block text-sm font-medium text-[var(--foreground-muted)]">
+                File B
+                <Select value={bId} onChange={(e) => setBId(e.target.value)} className="mt-1.5 text-sm">
                   {artifacts.map((a) => (
                     <option key={a.artifact_id} value={a.artifact_id}>
                       {a.title || a.artifact_id}
@@ -165,9 +154,9 @@ export default function ComparePage() {
                   ))}
                 </Select>
               </label>
-              <label className="block font-mono text-[10px] font-semibold uppercase tracking-wider text-white/35">
-                Measure B
-                <Select value={colB} onChange={(e) => setColB(e.target.value)} className="mt-1.5 font-mono text-xs">
+              <label className="block text-sm font-medium text-[var(--foreground-muted)]">
+                Column to compare
+                <Select value={colB} onChange={(e) => setColB(e.target.value)} className="mt-1.5 text-sm">
                   {colsB.map((c) => (
                     <option key={c} value={c}>
                       {c}
@@ -178,35 +167,33 @@ export default function ComparePage() {
               <Button onClick={run} disabled={running || !aId || !bId || !colA || !colB || aId === bId} className="justify-center whitespace-nowrap">
                 {running ? (
                   <>
-                    <Spinner className="size-3.5" /> Running gates…
+                    <Spinner className="size-3.5" /> Checking…
                   </>
                 ) : (
                   "Compare"
                 )}
               </Button>
             </div>
-            <p className="mt-2 text-center font-mono text-[11px] text-white/25">Tip: hashes are locators — same measure name does not imply same unit/definition. Gates catch that.</p>
+            <p className="mt-2.5 text-center text-sm text-[var(--foreground-faint)]">Tip: even if two columns have the same name, they might not mean the same thing. We check for that.</p>
           </Panel>
 
           {error && (
-            <div className="mb-4 rounded-xl border border-[#f87171]/25 bg-[#f87171]/10 px-4 py-3 text-sm text-[#f87171]" onClick={() => setError(null)}>
-              {error} <span className="ml-2 cursor-pointer underline decoration-white/20 underline-offset-2">(dismiss)</span>
+            <div className="mb-4 rounded-xl border border-[var(--critical)]/25 bg-[var(--critical-soft)] px-4 py-3 text-sm text-[var(--critical)]" onClick={() => setError(null)}>
+              {error} <span className="ml-2 cursor-pointer underline decoration-current/40 underline-offset-2">(dismiss)</span>
             </div>
           )}
 
           {result && (
             <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-              {/* Verdict is the hero – largest visual */}
-              <div className={cn("flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4", overallTone)}>
+              <div className={cn("flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-4", overallTone)}>
                 <div>
-                  <div className="font-mono text-[10px] font-semibold uppercase tracking-widest opacity-60">Gate verdict — primary scan</div>
-                  <div className="mt-1 font-mono text-2xl font-bold capitalize tracking-tight">{result.overall.replaceAll("_", " ")}</div>
-                  <div className="mt-1 font-mono text-xs opacity-60">{result.gates.length} gates · {Object.keys(result.totals).length} totals</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide opacity-70">Result</div>
+                  <div className="mt-1 text-xl font-bold tracking-tight">{OVERALL_LABEL[result.overall] ?? result.overall.replaceAll("_", " ")}</div>
                 </div>
-                <div className="flex flex-col gap-1.5 font-mono text-xs sm:items-end">
+                <div className="flex flex-col gap-1.5 text-sm sm:items-end">
                   {Object.entries(result.totals).map(([aid, t]) => (
-                    <span key={aid} className="inline-flex flex-wrap items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-2.5 py-1">
-                      <HashText hash={aid} /> <span className="text-white/40">·</span> {t.column}: <strong className="text-white">{Math.round(t.total).toLocaleString("en-IN")}</strong>
+                    <span key={aid} className="inline-flex flex-wrap items-center gap-1.5 rounded-full border border-current/20 bg-white/60 px-3 py-1">
+                      <HashText hash={aid} /> <span className="opacity-60">·</span> {t.column}: <strong>{Math.round(t.total).toLocaleString("en-IN")}</strong>
                     </span>
                   ))}
                 </div>
@@ -214,7 +201,7 @@ export default function ComparePage() {
 
               <div className="grid gap-4 lg:grid-cols-2">
                 <Panel className="p-4">
-                  <h3 className="font-mono text-[11px] font-semibold uppercase tracking-widest text-white/40">Alignment gates — must pass before reconciliation</h3>
+                  <h3 className="text-sm font-semibold text-[var(--foreground)]">Are they talking about the same thing?</h3>
                   <ul className="mt-3 space-y-2">
                     {result.gates.map((gate, i) => (
                       <motion.li
@@ -222,14 +209,14 @@ export default function ComparePage() {
                         initial={{ opacity: 0, x: -6 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.08 + i * 0.05 }}
-                        className="flex items-start justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.015] p-3"
+                        className="flex items-start justify-between gap-3 rounded-xl border border-[var(--border)] bg-white p-3"
                       >
                         <div className="min-w-0">
-                          <div className="font-mono text-sm capitalize text-white/85">{gate.dimension}</div>
-                          <div className="mt-1 font-sans text-xs leading-relaxed text-white/40">{gate.reason}</div>
+                          <div className="text-sm font-medium text-[var(--foreground)]">{GATE_LABEL[gate.dimension] ?? gate.dimension}</div>
+                          <div className="mt-1 text-sm leading-relaxed text-[var(--foreground-muted)]">{gate.reason}</div>
                         </div>
-                        <span className={cn("shrink-0 rounded-full border px-2 py-1 font-mono text-[11px] font-semibold uppercase tracking-wide", GATE_STATE_CLASS[gate.state])}>
-                          {gate.state.replaceAll("_", " ")}
+                        <span className={cn("shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide", GATE_STATE_CLASS[gate.state])}>
+                          {GATE_STATE_LABEL[gate.state] ?? gate.state.replaceAll("_", " ")}
                         </span>
                       </motion.li>
                     ))}
@@ -238,11 +225,11 @@ export default function ComparePage() {
 
                 <div className="space-y-4">
                   <Panel className="p-4">
-                    <h3 className="font-mono text-[11px] font-semibold uppercase tracking-widest text-white/40">Reconciliation — delta explanations</h3>
+                    <h3 className="text-sm font-semibold text-[var(--foreground)]">Do the numbers agree?</h3>
                     <div className="mt-3">
                       <span
                         className={cn(
-                          "inline-flex rounded-full border px-3 py-1 font-mono text-xs font-semibold uppercase tracking-wide",
+                          "inline-flex rounded-full border px-3 py-1.5 text-sm font-semibold",
                           result.contradiction.reconciliation_status === "conflict"
                             ? GATE_STATE_CLASS.not_comparable
                             : result.contradiction.reconciliation_status === "explainable"
@@ -250,34 +237,34 @@ export default function ComparePage() {
                               : GATE_STATE_CLASS.unknown,
                         )}
                       >
-                        {result.contradiction.reconciliation_status.replaceAll("_", " ")}
+                        {result.contradiction.reconciliation_status === "conflict" ? "No, they disagree" : result.contradiction.reconciliation_status === "explainable" ? "Yes, close enough" : "Can't compare yet"}
                       </span>
                     </div>
                     <ul className="mt-3 space-y-1.5">
                       {result.contradiction.possible_explanations.map((ex, i) => (
-                        <li key={i} className="flex gap-2 font-sans text-xs leading-relaxed text-white/55">
-                          <span className="mt-1 size-1 shrink-0 rounded-full bg-white/25" aria-hidden />
+                        <li key={i} className="flex gap-2 text-sm leading-relaxed text-[var(--foreground-muted)]">
+                          <span className="mt-1.5 size-1 shrink-0 rounded-full bg-[var(--foreground-faint)]" aria-hidden />
                           <span>{ex}</span>
                         </li>
                       ))}
                     </ul>
-                    <p className="mt-3 border-t border-white/[0.06] pt-2 font-mono text-[11px] text-white/25">Neither side declared wrong — explanations are audit prompts, not verdicts.</p>
+                    <p className="mt-3 border-t border-[var(--border)] pt-2.5 text-xs text-[var(--foreground-faint)]">We don&apos;t say who&apos;s right, these are possible explanations to check.</p>
                   </Panel>
 
                   {result.drift_findings.length > 0 && (
                     <Panel className="p-4">
-                      <h3 className="font-mono text-[11px] font-semibold uppercase tracking-widest text-white/40">Semantic drift detected ({result.drift_findings.length})</h3>
+                      <h3 className="text-sm font-semibold text-[var(--foreground)]">What changed between these files ({result.drift_findings.length})</h3>
                       <ul className="mt-3 space-y-2">
                         {result.drift_findings.map((d, i) => (
-                          <li key={`${d.finding_id}-${i}`} className="rounded-xl border border-[#fbbf24]/15 bg-[#fbbf24]/5 p-3">
-                            <div className="font-mono text-sm font-semibold capitalize text-[#fbbf24]">{(d.drift_type ?? "unknown").replaceAll("_", " ")}</div>
-                            <div className="mt-1 font-mono text-xs text-white/50">
-                              concept “{d.concept_id}” · impact {(d.semantic_impact * 100).toFixed(0)}% · {d.comparability_decision.replaceAll("_", " ")}
+                          <li key={`${d.finding_id}-${i}`} className="rounded-xl border border-[var(--medium)]/20 bg-[var(--medium-soft)] p-3">
+                            <div className="text-sm font-semibold capitalize text-[var(--medium)]">{(d.drift_type ?? "unknown").replaceAll("_", " ")}</div>
+                            <div className="mt-1 text-xs text-[var(--foreground-muted)]">
+                              &ldquo;{d.concept_id}&rdquo; changed by {(d.semantic_impact * 100).toFixed(0)}%
                             </div>
                           </li>
                         ))}
                       </ul>
-                      <p className="mt-3 font-mono text-[11px] text-white/30">Findings persisted to queue for review — scan drift before reconciling totals.</p>
+                      <p className="mt-3 text-xs text-[var(--foreground-faint)]">These were also added to your problems queue for review.</p>
                     </Panel>
                   )}
                 </div>

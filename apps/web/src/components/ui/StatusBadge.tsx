@@ -2,20 +2,19 @@ import type { FindingStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const STYLES: Record<FindingStatus, string> = {
-  open: "border-amber-400/40 bg-amber-400/10 text-amber-400",
-  needs_source_clarification:
-    "border-cyan-400/40 bg-cyan-400/10 text-cyan-300",
-  resolved: "border-emerald-400/40 bg-emerald-400/10 text-emerald-400",
-  not_detectable: "border-white/15 bg-white/5 text-slate-400",
-  false_positive_after_review: "border-rose-400/40 bg-rose-400/10 text-rose-300",
+  open: "border-[var(--medium)]/30 bg-[var(--medium-soft)] text-[var(--medium)]",
+  needs_source_clarification: "border-[var(--low)]/30 bg-[var(--low-soft)] text-[var(--low)]",
+  resolved: "border-[var(--good)]/30 bg-[var(--good-soft)] text-[var(--good)]",
+  not_detectable: "border-[var(--border-strong)] bg-[var(--background)] text-[var(--foreground-muted)]",
+  false_positive_after_review: "border-[var(--critical)]/25 bg-[var(--critical-soft)] text-[var(--critical)]",
 };
 
-const LABELS: Record<FindingStatus, string> = {
-  open: "Open",
-  needs_source_clarification: "Needs source clarification",
-  resolved: "Resolved",
-  not_detectable: "Not detectable",
-  false_positive_after_review: "False positive",
+export const STATUS_LABEL: Record<FindingStatus, string> = {
+  open: "Needs review",
+  needs_source_clarification: "Waiting on source",
+  resolved: "Checked, all good",
+  not_detectable: "Can't tell from this data",
+  false_positive_after_review: "Not a real problem",
 };
 
 export function StatusBadge({
@@ -28,12 +27,12 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium",
         STYLES[status],
         className,
       )}
     >
-      {LABELS[status]}
+      {STATUS_LABEL[status]}
     </span>
   );
 }

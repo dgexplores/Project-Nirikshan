@@ -19,7 +19,7 @@ export const metadata: Metadata = {
     template: "%s · Bharat Data Detective",
   },
   description:
-    "AI forensic & evidence-trust dashboard for Indian public data. Evidence-backed findings — not truth verdicts.",
+    "Check your data for problems, in plain language. Upload a file, see what looks off, and get proof for every answer.",
 };
 
 export default function RootLayout({
@@ -28,17 +28,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} grain min-h-screen antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen antialiased`}
       >
+        <a href="#main" className="skip-link">Skip to content</a>
         <SiteNav />
-        <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
+        <main id="main" className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
           {children}
         </main>
-        <footer className="border-t border-white/10 py-6">
-          <p className="mx-auto max-w-7xl px-4 text-center text-xs tracking-wide text-slate-500 sm:px-6">
-            Evidence-backed findings · Not truth verdicts
+        <footer className="border-t border-[var(--border)] py-6">
+          <p className="mx-auto max-w-7xl px-4 text-center text-xs tracking-wide text-[var(--foreground-faint)] sm:px-6">
+            We point out things worth checking. You always decide what&apos;s true.
           </p>
         </footer>
       </body>

@@ -2,15 +2,15 @@ import type { Confidence } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const STYLES: Record<Confidence, string> = {
-  low: "border-white/20 text-slate-400",
-  moderate: "border-[#22d3ee]/40 text-[#22d3ee]",
-  high: "border-emerald-400/40 text-emerald-400",
+  low: "border-[var(--border-strong)] text-[var(--foreground-muted)]",
+  moderate: "border-[var(--low)]/35 text-[var(--low)]",
+  high: "border-[var(--good)]/35 text-[var(--good)]",
 };
 
 const LABELS: Record<Confidence, string> = {
-  low: "Low confidence",
-  moderate: "Moderate confidence",
-  high: "High confidence",
+  low: "Not very sure",
+  moderate: "Fairly sure",
+  high: "Very sure",
 };
 
 export function ConfidencePill({
@@ -23,7 +23,7 @@ export function ConfidencePill({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium",
         STYLES[confidence],
         className,
       )}

@@ -19,10 +19,19 @@ interface Turn extends AskResponse {
 
 const EXAMPLES = [
   "What quality issues exist in the irrigation data?",
-  "Which datasets mention beneficiaries in lakh or crore?",
-  "Any outliers flagged in tube wells?",
-  "Is the digest total corroborated independently?",
+  "Which files mention beneficiaries in lakh or crore?",
+  "Any unusual numbers in tube wells?",
+  "Is the digest total confirmed by another source?",
 ];
+
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden className={className}>
+      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+      <path d="m20 20-3.5-3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 function CitationChip({ citation }: { citation: AskCitation }) {
   const base = citation.locator.startsWith("finding:")
@@ -32,9 +41,8 @@ function CitationChip({ citation }: { citation: AskCitation }) {
     <Link
       href={base}
       title={`${citation.locator} — ${citation.snippet}`}
-      className="inline-flex max-w-full items-center gap-1 rounded-full border border-[#f59e0b]/25 bg-[#f59e0b]/10 px-2 py-0.5 font-mono text-[11px] font-semibold tracking-tight text-[#fbbf24] transition hover:border-[#f59e0b]/40 hover:bg-[#f59e0b]/15"
+      className="inline-flex max-w-full items-center gap-1 rounded-full border border-[var(--brand)]/25 bg-[var(--brand-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--brand)] transition hover:border-[var(--brand)]/45"
     >
-      <span aria-hidden className="text-[10px]">◈</span>
       <span className="truncate">{citation.ref}</span>
     </Link>
   );
@@ -75,36 +83,29 @@ export default function AskPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Breadcrumb items={[{ label: "Dashboard", href: "/" }, { label: "Ask Detective" }]} />
+      <Breadcrumb items={[{ label: "Overview", href: "/" }, { label: "Ask" }]} />
       <HelpBanner
-        title="Ask in Hindi or English — cited or refused"
-        desc="Every answer needs evidence [E#]. Try the example chips, or restrict to one dataset via scope pills — lineage is the source of truth."
+        title="Ask in Hindi or English"
+        desc="Every answer comes with sources you can check. Try an example below, or pick specific files to search within."
         href="/datasets"
-        cta="Datasets"
+        cta="Your files"
       />
       <PageHeader
-        eyebrow={
-          <>
-            <span className="text-[#22d3ee]">EVIDENCE Q&A</span>
-            <span className="text-white/20">·</span>
-            <span>cited or refused · citations are locators</span>
-          </>
-        }
-        title="Ask Detective"
-        subtitle="Answers are synthesized only from stored evidence and must carry citations — otherwise the detective refuses. Each citation is a hash + locator you can audit."
+        title="Ask a question"
+        subtitle="We only answer using your uploaded data, and we always show our sources. If we're not sure, we'll say so instead of guessing."
         meta={
           turns.length > 0 ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 font-mono text-xs text-white/40">
-              {turns.length} turn(s) · citations are the hierarchy
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-sm text-[var(--foreground-muted)]">
+              {turns.length} question{turns.length === 1 ? "" : "s"} asked
             </span>
           ) : undefined
         }
-        actions={turns.length > 0 ? <Button variant="ghost" onClick={() => setTurns([])} className="text-xs">Clear</Button> : null}
+        actions={turns.length > 0 ? <Button variant="ghost" onClick={() => setTurns([])} className="text-sm">Clear</Button> : null}
       />
 
       {artifacts.length > 0 && (
         <div className="mb-4 flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 font-mono text-[11px] uppercase tracking-wider text-white/35">Evidence scope:</span>
+          <span className="mr-1 text-sm font-medium text-[var(--foreground-muted)]">Search within:</span>
           {artifacts.map((a) => {
             const active = scopeIds.includes(a.artifact_id);
             return (
@@ -113,14 +114,14 @@ export default function AskPage() {
                 onClick={() =>
                   setScopeIds((prev) => (prev.includes(a.artifact_id) ? prev.filter((x) => x !== a.artifact_id) : [...prev, a.artifact_id]))
                 }
-                className={`rounded-full border px-2.5 py-1 font-mono text-xs transition focus-visible:outline-none ${active ? "border-[#22d3ee]/40 bg-[#22d3ee]/10 text-[#22d3ee]" : "border-white/10 bg-white/[0.02] text-white/40 hover:border-white/20 hover:text-white/65"}`}
+                className={`rounded-full border px-3 py-1.5 text-sm transition focus-visible:outline-none ${active ? "border-[var(--brand)]/40 bg-[var(--brand-soft)] text-[var(--brand)]" : "border-[var(--border)] bg-white text-[var(--foreground-muted)] hover:border-[var(--border-strong)]"}`}
               >
-                {a.artifact_id}
+                {a.title || a.artifact_id}
               </button>
             );
           })}
           {scopeIds.length > 0 && (
-            <button onClick={() => setScopeIds([])} className="ml-1 font-mono text-xs text-white/35 underline decoration-white/15 underline-offset-2 hover:text-white/65">
+            <button onClick={() => setScopeIds([])} className="ml-1 text-sm text-[var(--foreground-faint)] underline decoration-current/30 underline-offset-2 hover:text-[var(--foreground-muted)]">
               reset
             </button>
           )}
@@ -131,22 +132,22 @@ export default function AskPage() {
         {!turns.length && !busy && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <Panel className="text-center">
-              <div className="mx-auto flex size-10 items-center justify-center rounded-full border border-[#22d3ee]/20 bg-[#22d3ee]/10 font-mono text-sm text-[#22d3ee]" aria-hidden>
-                ◈
+              <div className="mx-auto flex size-11 items-center justify-center rounded-full border border-[var(--brand)]/20 bg-[var(--brand-soft)] text-[var(--brand)]" aria-hidden>
+                <SearchIcon className="size-5" />
               </div>
-              <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-white/55">Ask about stored artifacts, profiles, findings and comparisons. Evidence is the hierarchy — every claim below will show its locator.</p>
+              <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-[var(--foreground-muted)]">Ask about your uploaded files, quality checks, or comparisons. Every answer shows exactly where it came from.</p>
               <div className="mt-4 flex flex-wrap justify-center gap-2">
                 {EXAMPLES.map((ex) => (
                   <button
                     key={ex}
                     onClick={() => submit(ex)}
-                    className="rounded-full border border-white/10 bg-white/[0.02] px-3 py-1.5 text-left text-xs leading-snug text-white/55 transition hover:border-[#f59e0b]/30 hover:bg-[#f59e0b]/5 hover:text-[#fbbf24] focus-visible:outline-none"
+                    className="rounded-full border border-[var(--border)] bg-white px-3.5 py-2 text-left text-sm leading-snug text-[var(--foreground-muted)] transition hover:border-[var(--brand)]/30 hover:bg-[var(--brand-soft)] hover:text-[var(--brand)] focus-visible:outline-none"
                   >
-                    “{ex}”
+                    &ldquo;{ex}&rdquo;
                   </button>
                 ))}
               </div>
-              <p className="mt-3 font-mono text-[11px] text-white/25">Tip: cite [E#] chips are interactive — click to open the evidence artifact.</p>
+              <p className="mt-3 text-xs text-[var(--foreground-faint)]">Tip: click the [E1], [E2] tags in an answer to see its source.</p>
             </Panel>
           </motion.div>
         )}
@@ -155,34 +156,31 @@ export default function AskPage() {
           {turns.map((turn) => (
             <motion.div key={turn.at + turn.question} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <div className="mb-2 flex justify-end">
-                <span className="max-w-[85%] rounded-2xl rounded-br-sm border border-white/10 bg-white/[0.06] px-3.5 py-2 text-sm leading-relaxed">{turn.question}</span>
+                <span className="max-w-[85%] rounded-2xl rounded-br-sm bg-[var(--brand)] px-4 py-2.5 text-sm leading-relaxed text-white">{turn.question}</span>
               </div>
               <Panel className="overflow-hidden p-0">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] bg-white/[0.015] px-4 py-2.5">
-                  <span className="font-mono text-[11px] uppercase tracking-widest text-white/40">
-                    {turn.mode === "llm" ? "LLM synthesis · cited" : turn.mode === "refusal" ? "Refusal — no evidence" : "Deterministic · cited"}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-3">
+                  <span className="text-sm font-medium text-[var(--foreground-muted)]">
+                    {turn.mode === "llm" ? "AI answer, with sources" : turn.mode === "refusal" ? "Not enough information" : "Answer, with sources"}
                   </span>
                   <ConfidencePill confidence={turn.confidence} />
                 </div>
-                <div className="px-4 py-3">
-                  <p className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-white/85">{turn.answer}</p>
+                <div className="px-4 py-3.5">
+                  <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--foreground)]">{turn.answer}</p>
                 </div>
 
                 {turn.citations.length > 0 && (
-                  <div className="border-t border-white/[0.06] bg-[#f59e0b]/[0.04] px-4 py-3">
-                    <div className="mb-2 flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-[#f59e0b]/80">
-                      <span>Citations — the audit trail</span>
-                      <span className="rounded bg-[#f59e0b]/10 px-1.5 py-0.5 font-mono text-[10px] text-[#f59e0b]">{turn.citations.length} locator(s)</span>
+                  <div className="border-t border-[var(--border)] bg-[var(--background)] px-4 py-3.5">
+                    <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[var(--foreground-faint)]">
+                      <span>Sources</span>
+                      <span className="rounded-full bg-white px-1.5 py-0.5">{turn.citations.length}</span>
                     </div>
                     <div className="space-y-2.5">
                       {turn.citations.map((c) => (
-                        <div key={c.ref} className="flex items-start gap-2.5 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2">
+                        <div key={c.ref} className="flex items-start gap-2.5 rounded-lg border border-[var(--border)] bg-white px-3 py-2">
                           <CitationChip citation={c} />
                           <div className="min-w-0 flex-1">
-                            <div className="truncate font-mono text-[11px] text-white/40" title={c.locator}>
-                              {c.locator}
-                            </div>
-                            <p className="mt-0.5 line-clamp-2 font-sans text-xs leading-relaxed text-white/35">{c.snippet}</p>
+                            <p className="line-clamp-2 text-sm leading-relaxed text-[var(--foreground-muted)]">{c.snippet}</p>
                           </div>
                         </div>
                       ))}
@@ -191,10 +189,10 @@ export default function AskPage() {
                 )}
 
                 {turn.suggested_next.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 border-t border-white/[0.06] bg-white/[0.015] px-4 py-2.5">
+                  <div className="flex flex-wrap gap-1.5 border-t border-[var(--border)] px-4 py-3">
                     {turn.suggested_next.map((next, i) => (
-                      <span key={i} className="rounded-full border border-dashed border-white/12 bg-white/[0.02] px-2.5 py-1 font-mono text-[11px] text-white/40">
-                        next → {next}
+                      <span key={i} className="rounded-full border border-dashed border-[var(--border-strong)] px-2.5 py-1 text-xs text-[var(--foreground-muted)]">
+                        Try: {next}
                       </span>
                     ))}
                   </div>
@@ -205,27 +203,27 @@ export default function AskPage() {
         </AnimatePresence>
 
         {busy && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/50">
-            <Spinner /> Retrieving evidence… <span className="font-mono text-xs text-white/30">hashes + locators</span>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--foreground-muted)]">
+            <Spinner /> Looking through your data…
           </motion.div>
         )}
         <div ref={bottomRef} />
       </div>
 
-      {error && <p className="mt-3 rounded-xl border border-[#f87171]/25 bg-[#f87171]/10 px-3 py-2 font-mono text-xs text-[#f87171]">{error}</p>}
+      {error && <p className="mt-3 rounded-xl border border-[var(--critical)]/25 bg-[var(--critical-soft)] px-3.5 py-2.5 text-sm text-[var(--critical)]">{error}</p>}
 
       <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="sticky bottom-4 mt-6 flex gap-2">
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Ask about the frozen evidence… (Hindi/English)"
-          className="flex-1 rounded-xl border border-white/12 bg-[#0b1120]/90 px-4 py-3 font-sans text-sm shadow-lg backdrop-blur placeholder:text-white/25 focus:border-[#f59e0b]/40 focus:outline-none"
+          placeholder="Ask a question… (Hindi or English)"
+          className="flex-1 rounded-full border border-[var(--border-strong)] bg-white px-4 py-3 text-sm shadow-lg backdrop-blur placeholder:text-[var(--foreground-faint)] focus:border-[var(--brand)]/50 focus:outline-none"
         />
         <Button type="submit" disabled={busy || !question.trim()} className="justify-center px-5">
           {busy ? <Spinner className="size-4" /> : "Ask"}
         </Button>
       </form>
-      <p className="mt-2 text-center font-mono text-[11px] text-white/25">Evidence-first: no citation → refusal. Every answer is auditable via locator + hash.</p>
+      <p className="mt-2 text-center text-xs text-[var(--foreground-faint)]">We only answer with proof. If we can&apos;t find it, we&apos;ll tell you honestly.</p>
     </div>
   );
 }
