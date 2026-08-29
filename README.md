@@ -109,7 +109,9 @@ Imagine government portals publish numbers about farmers, crops, pensions. Somet
 | **Script everything** | `bdd` CLI + API + blind benchmark runner (`bdd eval`) with explicit denominators | `bdd summary`, `bdd eval run` |
 | **Deploy free** | SQLite locally or Postgres on Railway free tier, frontend on Vercel free | `docker compose up` |
 
-**Live proof:** 6 AIKosh demo datasets (KCC 65 HI/EN, Pincode 87, Crop 60) → 20 findings already seeded — open https://web-tau-sandy-60.vercel.app and click `Findings`.
+**Live proof:** 6 AIKosh demo datasets (KCC 65 HI/EN, Pincode 87, Crop 60) → 20 findings already seeded, open https://web-tau-sandy-60.vercel.app and click `Findings`.
+
+**Real government data, not just synthetic fixtures:** MGNREGA Punjab district-wise FY2024-25 (6,784 rows, sourced from the official [nrega.nic.in](https://nrega.nic.in) release via a public GitHub mirror) has been ingested end-to-end, profiled, scored, and run through the anomaly engine, with real findings visible in the `Findings` queue after `bdd ingest`.
 
 ---
 
@@ -122,7 +124,7 @@ Imagine government portals publish numbers about farmers, crops, pensions. Somet
 | **No seasonal baseline** | Flat mean flags normal seasonal spikes as anomalies | Rolling median / STL residual | Tier 1 remainder |
 | **No PDF/document drift** | Only tables checked, not scheme PDFs/policy text | PDF ingestion + Qdrant embeddings | Tier 2 |
 | **No deep RAG agent** | Retrieval is TF-IDF, not vector search; no LangGraph flow | Qdrant + embeddings + `scope_guard → retrieve → cited_memo → safety_check` | Tier 2 |
-| **Hindi understanding is stub** | Hindi queries tagged but not translated (Bhashini stub) | Live Bhashini/Sarvam Translate API | Tier 2 |
+| **Hindi is a keyword bridge, not full NLU** | Devanagari questions retrieve evidence via a curated Hindi-to-English domain-word map, not machine translation, so wording outside that map won't match | Live Bhashini/Sarvam Translate API | Tier 2 |
 | **No login / roles** | Anyone can review; no reviewer vs admin | JWT auth + RBAC | Tier 3 |
 | **Jobs die on restart** | Thread-pool jobs, no retry | Arq/Celery + Redis | Tier 3 |
 | **No cloud storage** | Raw files on local disk | S3/MinIO + presigned uploads | Tier 3 |
@@ -184,7 +186,7 @@ No paid APIs needed (`LLM_PROVIDER=mock` deterministic, TF-IDF fallback if Qdran
 ### Verify
 
 ```bash
-uv run pytest        # 138 tests incl. API lifecycle, engines, CLI, leakage guard
+uv run pytest        # 155 tests incl. API lifecycle, engines, CLI, leakage guard
 uv run ruff check .  # lint
 cd apps/web && npm run build  # typecheck + production build
 ```
@@ -255,7 +257,7 @@ All knobs are `BDD_`-prefixed env vars (see `.env.example`):
 | `BDD_CORS_ORIGINS` | `http://localhost:3000` | Comma-separated origins |
 | `BDD_LLM_BASE_URL` / `BDD_LLM_API_KEY` / `BDD_LLM_MODEL` | empty | Optional OpenAI-compatible endpoint for Ask Detective synthesis |
 
-Ask Detective runs fully offline in deterministic cited-synthesis mode when no LLM is configured.
+Ask Detective runs fully offline in deterministic cited-synthesis mode when no LLM is configured. It has also been verified end-to-end against a local open-source model (Ollama running `qwen2.5:3b`, `BDD_LLM_BASE_URL=http://localhost:11434/v1`), answering both English and Hindi questions with citations intact and refusing when evidence is thin.
 
 ---
 
@@ -321,6 +323,7 @@ uv run bdd eval report <run_id>
 - `docs/benchmark-protocol.md`, blinded CAG evaluation protocol
 - `docs/adr/ADR-0001-repository-layout.md`
 - `docs/UI_Finish_Gate_Report.md`
+- `docs/PROTOTYPE_VIDEO_SCRIPT.md`, UNLEASH prototype video walkthrough script
 
 ---
 
@@ -353,7 +356,7 @@ Launch-ready v1.3: v1.0 platform + Benford screening + fuzzy geo resolution + `b
 
 ### Achieved quality gates
 
-- 138 passing tests: API lifecycle, engine math vectors, CLI commands, seed idempotency (reruns write zero duplicates), Ask-Detective safety gate, blind-run label-exclusion guard, benchmark-leakage guard
+- 155 passing tests: API lifecycle, engine math vectors, CLI commands, seed idempotency (reruns write zero duplicates), Ask-Detective safety gate, blind-run label-exclusion guard, benchmark-leakage guard
 - Governance: the API layer has zero import path to the restricted registry (structurally verified); every label read is access-logged
 - `ruff` clean; Next.js production build clean; both Docker images build in CI
 - End-to-end verified: seed → dashboard → compare → ask → lineage on a fresh database (including live free-tier deploy)
@@ -367,7 +370,7 @@ Launch-ready v1.3: v1.0 platform + Benford screening + fuzzy geo resolution + `b
 - [ ] Qdrant + embeddings over chunked dataset content and scheme documents (compose already ships Qdrant)
 - [ ] PDF/document ingestion so drift checks cover policy text, not just tables
 - [ ] LangGraph investigation flow per spec §15: scope_guard → retrieve_evidence → assess_sufficiency → refuse_or_plan → deterministic_tools → cited_memo → claim_safety_check
-- [ ] Hindi/Hinglish question understanding (India-first requirement) — *partially done via Bhashini stub*
+- [x] Hindi question retrieval bridge (Devanagari tokenizer + curated domain-word map, bilingual refusal text), full Hindi/Hinglish NLU via Bhashini/Sarvam still open
 
 ### Next — Tier 3: production hardening
 
