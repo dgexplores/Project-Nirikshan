@@ -70,7 +70,7 @@ jobs:
             sleep 2
           done
           echo "api did not become healthy"; docker compose -f infra/docker/compose.yml logs api; exit 1
-      - name: Smoke: readiness, seed, findings, web proxy
+      - name: "Smoke: readiness, seed, findings, web proxy"
         run: |
           set -e
           curl -sf http://localhost:18000/health/ready | grep -q '"database":true'
