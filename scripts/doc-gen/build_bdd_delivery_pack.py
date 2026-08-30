@@ -7,8 +7,8 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
 
-OUT=Path('/Users/dgsmacbook/Documents/Codex/2026-08-12/referenced-chatgpt-conversation-this-is-an/outputs/BDD_Final_Deliverables_and_Submission_Pack.docx')
-OUT.parent.mkdir(parents=True,exist_ok=True)
+OUT = Path(__file__).resolve().parents[2] / "docs" / "specification" / "BDD_Final_Deliverables_and_Submission_Pack.docx"
+OUT.parent.mkdir(parents=True, exist_ok=True)
 NAVY='102A43'; BLUE='146C94'; TEAL='0E9F9A'; GREY='52616B'
 def shade(c,x):
  p=c._tc.get_or_add_tcPr(); e=OxmlElement('w:shd'); e.set(qn('w:fill'),x); p.append(e)

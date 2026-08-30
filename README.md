@@ -1,21 +1,21 @@
-# Bharat Data Detective (BDD) 🔍🇮🇳
+# Bharat Data Detective (BDD)
 
-**AI forensic & evidence-trust layer for Indian public data — flags inconsistencies for review, never declares anyone "wrong".**
+**AI forensic and evidence-trust layer for Indian public data.** Flags inconsistencies for human review, never declares anyone "wrong".
 
-> Built for **UNLEASH LLM — Responsible AI, Rooted in India** (India-First Dataset Track via AIKosh)
+> Built for **UNLEASH LLM, Responsible AI, Rooted in India** (India-First Dataset Track via AIKosh)
 
 ---
 
-## 🚀 LIVE DEMO — Click to Test (Free Tier)
+## Live demo
 
 | Layer | Link | What to test |
 |---|---|---|
 | **Frontend (Next.js)** | **https://web-tau-sandy-60.vercel.app** | Dashboard → Datasets (drag-drop) → Findings → Ask Detective |
 | **Backend API (FastAPI)** | **https://bharat-api-production.up.railway.app** | Health, seed, ask |
 | **API Docs (Swagger)** | **https://bharat-api-production.up.railway.app/docs** | Try all endpoints live |
-| **GitHub (Direct Use)** | **https://github.com/dgexplores/bharat-data-detective** | Clone & run locally — see below |
+| **GitHub (Direct Use)** | **https://github.com/dgexplores/bharat-data-detective** | Clone and run locally, see below |
 
-### 📥 Direct GitHub Use — One Click
+### Direct GitHub use
 
 **Clone & run locally (2 commands):**
 ```bash
@@ -54,7 +54,7 @@ curl -X POST https://bharat-api-production.up.railway.app/ask \
 
 ---
 
-## In Simple Words — What Is This?
+## What this is
 
 Imagine government portals publish numbers about farmers, crops, pensions. Sometimes the same scheme shows **different totals on two sites**, or **lakh suddenly becomes crore next year**, or **10 articles repeat one number** (looks like 10 confirmations but it's 1 source). No one has time to check manually.
 
@@ -62,38 +62,38 @@ Imagine government portals publish numbers about farmers, crops, pensions. Somet
 1. You upload any CSV/Excel (or pick an AIKosh Indian dataset)
 2. It freezes the file (SHA256 hash, never modified), checks quality, and understands what columns *mean* (Hindi + English: lakh/लाख, crore/करोड़, FY 2024-25)
 3. It runs 5 checks: **drift** (definition changed?), **anomaly** (spike?), **contradiction** (two sources disagree?), **false consensus** (copied?), **Benford** (digits look fabricated?)
-4. Every flag shows **evidence + source row + lineage graph** back to raw bytes — you decide, not the AI.
+4. Every flag shows **evidence + source row + lineage graph** back to raw bytes, you decide, not the AI.
 
 > Core rule: `Evidence before narrative. LLM is sidekick, not judge.`
 
 ---
 
-## ✨ Features (Easy List)
+## Features
 
-**For Anyone:**
-- 📤 **Drag-drop ingest** — CSV/TSV/XLSX/JSON/Parquet, live progress, fitness grade A-F
-- 📊 **Auto profile** — nulls, duplicates, distributions, PII hints (Aadhaar/PAN/mobile flagged)
-- 🔗 **Lineage graph** — click any finding → see raw file → parser → rule → finding (animated SVG)
-- 🔍 **Findings queue** — filter by severity/engine, one-click reviewer decision (resolved / false-positive)
+**For anyone:**
+- **Drag-drop ingest**, CSV/TSV/XLSX/JSON/Parquet, live progress, fitness grade A-F
+- **Auto profile**, nulls, duplicates, distributions, PII hints (Aadhaar/PAN/mobile flagged)
+- **Lineage graph**, click any finding to see raw file to parser to rule to finding (animated SVG)
+- **Findings queue**, filter by severity/engine, one-click reviewer decision (resolved / false-positive)
 
-**For Analysts:**
-- ↔️ **Compare any two datasets** — gates check geography/period/unit/definition *before* numbers are compared (lakh vs crore = blocked, not silently compared)
-- 🎲 **Benford screening** — digit pattern vs natural law (MAD score) to spot fabricated-looking amounts
-- 🧬 **False consensus** — 2 "sources" tracing to 1 origin = diversity 0.5, not 2 confirmations
-- 🌏 **Fuzzy geo match** — "Adabari T.E." ≈ "Adabari" (RapidFuzz) so spelling doesn't block valid compares
+**For analysts:**
+- **Compare any two datasets**, gates check geography/period/unit/definition before numbers are compared (lakh vs crore is blocked, not silently compared)
+- **Benford screening**, digit pattern vs natural law (MAD score) to spot fabricated-looking amounts
+- **False consensus**, 2 "sources" tracing to 1 origin is reported as diversity 0.5, not 2 confirmations
+- **Fuzzy geo match**, "Adabari T.E." matches "Adabari" (RapidFuzz) so spelling doesn't block valid compares
 
-**For AI / India-First:**
-- 💬 **Ask Detective** — ask in **Hindi or English** ("बरेली में कितने लाभार्थी?"), get cited answer `[E1]` or honest refusal if evidence is thin
-- 🛡️ **Responsible AI live:** PII redacted before LLM, prompt-injection blocked, hallucination flagged, every label access logged
-- 🇮🇳 **India datasets ready:** Kisan Call Centre (65 Hindi/English queries, AIKosh), Pincode Directory (87), Crop Production (60) — all frozen with manifests
+**For AI and India-first work:**
+- **Ask Detective**, ask in Hindi or English ("बरेली में कितने लाभार्थी?"), get a cited answer `[E1]` or an honest refusal if evidence is thin
+- **Responsible AI in practice**: PII redacted before any LLM call, prompt-injection blocked, hallucination flagged, every label access logged
+- **India datasets ready**: real GER, MGNREGA, and Kisan Call Centre data from data.gov.in (see Real data proof below), plus Pincode Directory and Crop Production demo fixtures, all frozen with manifests
 
-**For Developers:**
-- ⌨️ **`bdd` CLI** — `bdd seed`, `bdd ingest`, `bdd findings`, `bdd compare`, `bdd ask`, `bdd summary` (all `--json` scriptable)
-- 🔬 **`bdd eval`** — blind benchmark runner: run without labels → adjudicate → report with explicit denominators (no fake accuracy)
+**For developers:**
+- **`bdd` CLI**, `bdd seed`, `bdd ingest`, `bdd findings`, `bdd compare`, `bdd ask`, `bdd summary`, all `--json` scriptable
+- **`bdd eval`**, blind benchmark runner: run without labels, adjudicate, report with explicit denominators (no fake accuracy)
 
 ---
 
-## ✅ What BDD Can Do TODAY (Capabilities) — Easy Language
+## What BDD can do today
 
 **You can use it right now for real work:**
 
@@ -112,15 +112,19 @@ Imagine government portals publish numbers about farmers, crops, pensions. Somet
 **Live proof:** click "Load demo case" on the deployed frontend and it seeds 6 clearly-labelled synthetic datasets (micro-irrigation unit drift, a planted district spike, two conflicting PM-KISAN-style totals, and a fabricated-looking payments file) → 20 findings, one of each engine, in under a second. Open https://web-tau-sandy-60.vercel.app and click `Findings`.
 
 **Real government data, not just synthetic fixtures, with a real finding in it:**
+The raw files for all three datasets below, along with full source-URL and SHA-256 provenance for every one, are committed in [`data/real-samples/`](data/real-samples/) and [`data/source-register.csv`](data/source-register.csv), not just described here.
+
 - **District-wise Gross Enrollment Ratio (GER) in Schools, Punjab, 2019-2022**, downloaded directly from **data.gov.in** ([catalog page](https://www.data.gov.in/catalog/district-wise-gross-enrollment-ratio-ger-schools-punjab)), all 8 official resources (Primary/Upper Primary/Secondary/Higher Secondary x Boys/Girls), each ingested and profiled with its own resource-id provenance. The anomaly engine surfaced a genuine, consistent pattern: **SAS Nagar (Mohali) district's GER climbs to 124-145% by 2022, far above every peer district, z-score 3.78, high confidence, and it shows up across almost every school level and gender**, not a one-off glitch in a single column. Raw values confirm a steady multi-year rise (2019 ~90-112 to 2022 ~124-145), consistent with Mohali's rapid in-migration outpacing how its official school-age denominator gets updated. This is BDD flagging something worth checking in the exact platform this track is built around, not a synthetic demo.
 - **MGNREGA Punjab district-wise FY2024-25** (6,784 rows, sourced from the official [nrega.nic.in](https://nrega.nic.in) release via a public GitHub mirror) has been ingested end-to-end, profiled, scored, and run through the anomaly engine, with real findings visible in the `Findings` queue after `bdd ingest`.
-- **Kisan Call Centre farmer queries, Punjab** (5,000-row real sample pulled directly from data.gov.in's own Open Government Data API, out of a live 47.9-million-row dataset) has also been ingested and profiled (fitness 98.9, grade A). It correctly produces **zero** anomaly findings, because it has no numeric metric column to check, only a call id and a calendar day/month, and forcing a statistical check on those would be a fabricated finding, not a real one. Pulling this dataset in is what surfaced and fixed a real bug: the anomaly engine used to treat *any* numeric column as a metric, so it confidently flagged the call ids and calendar days as "anomalies" until this was caught and corrected (see `services/api/src/bdd_api/pipelines.py::_is_metric_column`).
+- **Kisan Call Centre farmer queries, Punjab** (5,000-row real sample pulled directly from data.gov.in's own Open Government Data API, out of a live 47.9-million-row dataset) has also been ingested and profiled (fitness 98.9, grade A). It correctly produces **zero** anomaly findings, because it has no numeric metric column to check, only a call id and a calendar day/month, and forcing a statistical check on those would be a fabricated finding, not a real one. Pulling this dataset in is what surfaced and fixed a real bug: the anomaly engine used to treat any numeric column as a metric, so it confidently flagged the call ids and calendar days as "anomalies" until this was caught and corrected (see `services/api/src/bdd_api/pipelines.py::_is_metric_column`).
+
+All of the above is already ingested and live on the deployed demo, not just local. Reproduce any of it yourself with the `bdd` CLI, see [`data/real-samples/README.md`](data/real-samples/README.md) for the exact commands.
 
 ---
 
-## 🚧 What Is NOT Made Yet / Can Be Better — Honest Gaps
+## Honest gaps, what isn't built yet
 
-**These are real limitations today — roadmap tells how we fix them:**
+**These are real limitations today, the roadmap below tracks how we fix them:**
 
 | Gap | Why it matters | How to make it better | Track |
 |---|---|---|---|
@@ -135,11 +139,11 @@ Imagine government portals publish numbers about farmers, crops, pensions. Somet
 | **No auto-monitor** | Must re-upload when portal updates | Cron re-fetch + alert on silent revisions | Tier 4 |
 | **No PDF case export** | Can't share case file externally | One-click PDF (findings + lineage + sign-off) | Tier 4 |
 
-> **No fake accuracy:** we report no precision/recall until the blind CAG benchmark is run via `bdd eval`. Transparency over hype — see `docs/benchmark-protocol.md`.
+> **No fake accuracy:** we report no precision/recall until the blind CAG benchmark is run via `bdd eval`. Transparency over hype, see `docs/benchmark-protocol.md`.
 
 ---
 
-## How It Works (3 Steps)
+## How it works
 
 ```
 Your CSV ──► FREEZE (SHA256) ──► PROFILE (quality) ──► 5 ENGINES ──► FINDINGS ──► YOU REVIEW
@@ -161,11 +165,11 @@ Requirements: [uv](https://docs.astral.sh/uv/) (Python >= 3.12), Node >= 20, Doc
 ### One command each (local dev)
 
 ```bash
-# Terminal 1 — API on :8000 (SQLite, zero external services)
+# Terminal 1: API on :8000 (SQLite, zero external services)
 uv sync
 uv run uvicorn bdd_api.main:app --app-dir services/api/src --port 8000
 
-# Terminal 2 — Dashboard on :3000 (proxies /api/backend -> :8000)
+# Terminal 2: Dashboard on :3000 (proxies /api/backend -> :8000)
 cd apps/web && npm install && npm run dev
 ```
 
@@ -178,7 +182,7 @@ docker compose -f infra/docker/compose.yml up --build
 # web: http://localhost:3000   api: http://localhost:8000/docs   db: Postgres+PostGIS
 ```
 
-### Permanent Free-Tier Deploy (1-click)
+### Permanent free-tier deploy (1-click)
 
 **Render (backend+DB+frontend, free):** `render.yaml` blueprint → https://dashboard.render.com/blueprint → select repo → Apply  
 **Vercel (frontend, free Hobby):** `cd apps/web && vercel --prod --yes` (already live at https://web-tau-sandy-60.vercel.app)  
@@ -354,7 +358,7 @@ Launch-ready v1.3: v1.0 platform + Benford screening + fuzzy geo resolution + `b
 - [x] Background jobs with persisted step-level progress; anomaly queue capped at strongest 12 signals per artifact
 - [x] Web dashboard: ingest w/ live job steps, profiler views, findings queue + reviewer decisions, compare workbench, lineage visualization, Benford observed-vs-expected digit bars
 - [x] Ask Detective: deterministic cited synthesis; optional LLM with hard safety gate
-- [x] **`bdd` CLI**: init/serve/seed/ingest/artifacts/show/findings/review/ compare/ask/summary — every list command `--json`-scriptable
+- [x] **`bdd` CLI**: init/serve/seed/ingest/artifacts/show/findings/review/ compare/ask/summary, every list command `--json`-scriptable
 - [x] Synthetic demo corpus (one-click seed: drift + anomaly + conflict + consensus + Benford demos) and CI incl. docker builds and benchmark-leakage guard
 
 ### Achieved quality gates
@@ -364,18 +368,18 @@ Launch-ready v1.3: v1.0 platform + Benford screening + fuzzy geo resolution + `b
 - `ruff` clean; Next.js production build clean; both Docker images build in CI
 - End-to-end verified: seed → dashboard → compare → ask → lineage on a fresh database (including live free-tier deploy)
 
-### In progress — Tier 1 remainder
+### In progress: Tier 1 remainder
 
-- [ ] **Seasonal/trend-aware anomaly baseline** — expected value from rolling median or STL residual instead of flat mean, cutting false positives on cyclical data
+- [ ] **Seasonal/trend-aware anomaly baseline** expected value from rolling median or STL residual instead of flat mean, cutting false positives on cyclical data
 
-### Next — Tier 2: real RAG + agent (spec Sprint 4)
+### Next: Tier 2, real RAG and agent (spec Sprint 4)
 
 - [ ] Qdrant + embeddings over chunked dataset content and scheme documents (compose already ships Qdrant)
 - [ ] PDF/document ingestion so drift checks cover policy text, not just tables
 - [ ] LangGraph investigation flow per spec §15: scope_guard → retrieve_evidence → assess_sufficiency → refuse_or_plan → deterministic_tools → cited_memo → claim_safety_check
 - [x] Hindi question retrieval bridge (Devanagari tokenizer + curated domain-word map, bilingual refusal text), full Hindi/Hinglish NLU via Bhashini/Sarvam still open
 
-### Next — Tier 3: production hardening
+### Next: Tier 3, production hardening
 
 - [ ] JWT auth + RBAC (reviewer/admin roles for the human-review gate)
 - [ ] Durable job queue (Arq/Celery + Redis) surviving restarts, with retries
@@ -384,7 +388,7 @@ Launch-ready v1.3: v1.0 platform + Benford screening + fuzzy geo resolution + `b
 - [ ] OpenTelemetry traces + Prometheus metrics (spec NFR)
 - [ ] DuckDB query engine for 10 GB+ files
 
-### Later — Tier 4: product moat
+### Later: Tier 4, product moat
 
 - [ ] Scheduled source monitors: re-fetch registered URLs on a cron, alert when a portal silently revises published numbers
 - [ ] One-click case-file export (PDF: findings + lineage + reviewer sign-off)
