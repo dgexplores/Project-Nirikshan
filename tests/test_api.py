@@ -151,6 +151,29 @@ def test_analyze_handles_zero_baseline_yoy_finding(api: TestClient) -> None:
     assert analyze.status_code == 200, analyze.text
 
 
+def test_analyze_ignores_identifier_and_calendar_columns(api: TestClient) -> None:
+    # Found via a real 47M-row AI Kosh dataset (Kisan Call Centre) that had
+    # a call-id column and day/month columns but no genuine numeric metric.
+    # run_anomalies used to treat every Int/Float column as a metric, so it
+    # confidently flagged a handful of call ids and calendar days as
+    # "anomalies", noise with no evidence value. A record's id or the day
+    # of the month it landed on is not expected to follow any distribution.
+    rows = [f"{1000 + i},{(i % 28) + 1},{(i % 12) + 1},{10 + (i % 5)}" for i in range(20)]
+    rows.append("9999,15,6,5000")  # one genuine, extreme metric outlier
+    csv = "call_id,day,month,amount\n" + "\n".join(rows) + "\n"
+    _ingest(api, "art_id_calendar", csv)
+    analyze = api.post("/artifacts/art_id_calendar/analyze")
+    assert analyze.status_code == 200, analyze.text
+
+    findings = api.get("/findings", params={"kind": "anomaly"}).json()["items"]
+    ours = [f for f in findings if "art_id_calendar" in f["artifact_ids"]]
+    assert ours, "expected the genuine amount outlier to be flagged"
+    for f in ours:
+        words = set(f["title"].lower().split())
+        assert not {"call_id", "day", "month"} & words, f["title"]
+    assert any("amount" in f["title"] for f in ours)
+
+
 def test_compare_two_artifacts_produces_finding(api: TestClient) -> None:
     _ingest(api, "cmp_a", "district,total_inr\nA,100\nB,200\nC,300\n")
     _ingest(api, "cmp_b", "district,total_inr\nA,105\nB,210\nC,315\n")

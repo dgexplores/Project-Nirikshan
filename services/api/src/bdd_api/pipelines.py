@@ -280,6 +280,25 @@ def _find_column(profile: DatasetProfile, tokens: list[str]) -> str | None:
     return None
 
 
+_NON_METRIC_SUFFIXES = ("id", "code")
+_NON_METRIC_EXACT = {"day", "month"}
+
+
+def _is_metric_column(name: str) -> bool:
+    """True for numeric columns worth z-score/IQR/Benford checks.
+
+    Identifiers (``KCCCallID``, ``district_code``) and calendar parts
+    (``day``, ``month``) are numeric but have no "expected distribution" to
+    violate: an ID varying widely, or a day-of-month landing on the 28th,
+    is not evidence of anything. Running the anomaly engines on them
+    produces confident-looking, meaningless findings (found via a real
+    47M-row AI Kosh dataset that had no other numeric columns to compete
+    with them for the findings cap).
+    """
+    low = name.lower()
+    return low not in _NON_METRIC_EXACT and not low.endswith(_NON_METRIC_SUFFIXES)
+
+
 def _unit_for_column(profile: DatasetProfile, column: str) -> str:
     for card in infer_definition_cards(profile):
         span = card.evidence_spans[0] if card.evidence_spans else ""
@@ -464,9 +483,15 @@ def run_anomalies(artifact_id: str, job_id: str | None = None) -> int:
         return 0
 
     df = load_dataframe(row.raw_uri)
-    value_cols = [c.name for c in profile.columns if c.dtype.startswith(("Int", "Float"))]
     entity_col = _find_column(profile, ["district", "state", "village", "entity"])
     period_col = _find_column(profile, ["year", "fy", "period"])
+    value_cols = [
+        c.name
+        for c in profile.columns
+        if c.dtype.startswith(("Int", "Float"))
+        and _is_metric_column(c.name)
+        and c.name not in (entity_col, period_col)
+    ]
 
     findings: list[AnomalyFinding] = []
     for value_col in value_cols:
