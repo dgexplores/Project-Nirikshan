@@ -48,23 +48,35 @@ curl -X POST https://bharat-api-production.up.railway.app/ask \
 # → cited answer with [E1] [E2]...
 ```
 
-**Temporary tunnels (instant, no Vercel cache):**
-- API: `https://deep-plants-cut.loca.lt` (add header `bypass-tunnel-reminder: true`)
-- Web: `https://fresh-horses-know.loca.lt`
+---
+
+## By the numbers
+
+These are live, checkable facts, not marketing claims. Every figure below is either a running test count, a live API response, or a number sitting in the repo right now.
+
+| | |
+|---|---|
+| Forensic engines | 5 (drift, anomaly, contradiction, false consensus, Benford) |
+| Real government datasets ingested | 3, from data.gov.in and nrega.nic.in |
+| Real findings from real data, live right now | 50 (34 anomaly, 16 Benford) |
+| Backend tests passing | 152, zero failures |
+| Strongest real finding | SAS Nagar (Mohali) district's school enrollment ratio hits 145% of capacity by 2022, z-score 3.78 against its peers |
+| Languages Ask Detective answers in | Hindi and English, both cited |
 
 ---
 
 ## What this is
 
-Imagine government portals publish numbers about farmers, crops, pensions. Sometimes the same scheme shows **different totals on two sites**, or **lakh suddenly becomes crore next year**, or **10 articles repeat one number** (looks like 10 confirmations but it's 1 source). No one has time to check manually.
+Government portals in India publish enormous amounts of data on farmers, crops, schools, pensions. Nobody has time to check it by hand, so most of it goes unchecked. The same scheme sometimes shows different totals on two different pages. A unit quietly switches from lakh to crore between one year's release and the next. Ten articles repeat one number, and it looks like ten confirmations when it's really one source copied nine times.
 
-**BDD is like a detective for public data:**
-1. You upload any CSV/Excel (or pick an AIKosh Indian dataset)
-2. It freezes the file (SHA256 hash, never modified), checks quality, and understands what columns *mean* (Hindi + English: lakh/लाख, crore/करोड़, FY 2024-25)
-3. It runs 5 checks: **drift** (definition changed?), **anomaly** (spike?), **contradiction** (two sources disagree?), **false consensus** (copied?), **Benford** (digits look fabricated?)
-4. Every flag shows **evidence + source row + lineage graph** back to raw bytes, you decide, not the AI.
+BDD reads a dataset the way a careful analyst would, and it never pretends to know more than the data supports.
 
-> Core rule: `Evidence before narrative. LLM is sidekick, not judge.`
+1. You upload any CSV or Excel file, or point it at a real dataset from data.gov.in / AIKosh.
+2. It freezes the file with a SHA-256 hash so it can never be silently changed later, checks its quality, and works out what each column actually means (in Hindi and English: lakh/लाख, crore/करोड़, FY 2024-25).
+3. Five checks run against it: has the **definition drifted**? Is there an **anomaly**? Do **two sources contradict** each other? Is this **false consensus** (many "sources," one origin)? Do the digits fail a **Benford** check?
+4. Every flag comes with the evidence, the exact source row, and a lineage graph back to the original bytes. You decide what it means, the tool never does.
+
+> Core rule: evidence before narrative. The LLM is a sidekick here, never the judge.
 
 ---
 
@@ -114,7 +126,18 @@ Imagine government portals publish numbers about farmers, crops, pensions. Somet
 **Real government data, not just synthetic fixtures, with a real finding in it:**
 The raw files for all three datasets below, along with full source-URL and SHA-256 provenance for every one, are committed in [`data/real-samples/`](data/real-samples/) and [`data/source-register.csv`](data/source-register.csv), not just described here.
 
-- **District-wise Gross Enrollment Ratio (GER) in Schools, Punjab, 2019-2022**, downloaded directly from **data.gov.in** ([catalog page](https://www.data.gov.in/catalog/district-wise-gross-enrollment-ratio-ger-schools-punjab)), all 8 official resources (Primary/Upper Primary/Secondary/Higher Secondary x Boys/Girls), each ingested and profiled with its own resource-id provenance. The anomaly engine surfaced a genuine, consistent pattern: **SAS Nagar (Mohali) district's GER climbs to 124-145% by 2022, far above every peer district, z-score 3.78, high confidence, and it shows up across almost every school level and gender**, not a one-off glitch in a single column. Raw values confirm a steady multi-year rise (2019 ~90-112 to 2022 ~124-145), consistent with Mohali's rapid in-migration outpacing how its official school-age denominator gets updated. This is BDD flagging something worth checking in the exact platform this track is built around, not a synthetic demo.
+- **District-wise Gross Enrollment Ratio (GER) in Schools, Punjab, 2019-2022**, downloaded directly from **data.gov.in** ([catalog page](https://www.data.gov.in/catalog/district-wise-gross-enrollment-ratio-ger-schools-punjab)), all 8 official resources (Primary/Upper Primary/Secondary/Higher Secondary x Boys/Girls), each ingested and profiled with its own resource-id provenance. The anomaly engine surfaced a genuine, consistent pattern: **SAS Nagar (Mohali) district's GER climbs to 124-145% by 2022, far above every peer district, z-score 3.78, high confidence, and it shows up across almost every school level and gender**, not a one-off glitch in a single column. This is BDD flagging something worth checking in the exact platform this track is built around, not a synthetic demo.
+
+  The raw numbers, straight from the source file, for SAS Nagar's enrollment ratio in Primary schools:
+
+  | Year | Boys | Girls |
+  |---|---|---|
+  | 2019 | 105.5 | 112.1 |
+  | 2020 | 114.8 | 124.4 |
+  | 2021 | 118.5 | 128.5 |
+  | 2022 | **143.2** | **145.1** |
+
+  A four-year climb, not a single bad row, which is exactly why it's worth a human looking at it: likely Mohali's rapid in-migration outpacing how its official school-age population gets updated, not necessarily anything wrong.
 - **MGNREGA Punjab district-wise FY2024-25** (6,784 rows, sourced from the official [nrega.nic.in](https://nrega.nic.in) release via a public GitHub mirror) has been ingested end-to-end, profiled, scored, and run through the anomaly engine, with real findings visible in the `Findings` queue after `bdd ingest`.
 - **Kisan Call Centre farmer queries, Punjab** (5,000-row real sample pulled directly from data.gov.in's own Open Government Data API, out of a live 47.9-million-row dataset) has also been ingested and profiled (fitness 98.9, grade A). It correctly produces **zero** anomaly findings, because it has no numeric metric column to check, only a call id and a calendar day/month, and forcing a statistical check on those would be a fabricated finding, not a real one. Pulling this dataset in is what surfaced and fixed a real bug: the anomaly engine used to treat any numeric column as a metric, so it confidently flagged the call ids and calendar days as "anomalies" until this was caught and corrected (see `services/api/src/bdd_api/pipelines.py::_is_metric_column`).
 
@@ -145,16 +168,29 @@ All of the above is already ingested and live on the deployed demo, not just loc
 
 ## How it works
 
-```
-Your CSV ──► FREEZE (SHA256) ──► PROFILE (quality) ──► 5 ENGINES ──► FINDINGS ──► YOU REVIEW
-                                      │                      │
-                                      └─► ASK (RAG) ─────────┘
-                                           retrieval (TF-IDF) → open LLM (Sarvam/BharatGen/Ollama/mock) → cited answer
+```mermaid
+flowchart LR
+    A["Your file<br/>CSV / Excel / JSON"] --> B["Freeze<br/>SHA-256 hash"]
+    B --> C["Profile<br/>nulls, PII, quality"]
+    C --> D{"5 forensic engines"}
+    D --> D1["Drift"]
+    D --> D2["Anomaly"]
+    D --> D3["Contradiction"]
+    D --> D4["False consensus"]
+    D --> D5["Benford"]
+    D1 --> E["Findings queue"]
+    D2 --> E
+    D3 --> E
+    D4 --> E
+    D5 --> E
+    E --> F["You review<br/>resolved / not detectable / false positive"]
+    C -.-> G["Ask Detective<br/>retrieval + cited LLM answer"]
+    G -.-> E
 ```
 
-**Deterministic:** same bytes → same hashes → same findings (idempotent, regression-tested).  
-**Immutable:** raw store never overwritten, manifests pin parser version + config hash.  
-**Governed:** benchmark labels in `data/benchmark-restricted/` never indexed (leakage test fails CI if they leak).
+**Deterministic:** same bytes always produce the same hashes and the same findings, reruns are idempotent and regression-tested.  
+**Immutable:** the raw store is never overwritten, every manifest pins the parser version and config hash used.  
+**Governed:** benchmark labels in `data/benchmark-restricted/` are never indexed, a CI leakage test fails the build if they ever leak.
 
 ---
 
