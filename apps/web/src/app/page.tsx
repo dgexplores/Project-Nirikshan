@@ -4,16 +4,15 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { AnimatedNumber, formatBytes } from "@/components/AnimatedNumber";
+import { HomeHero } from "@/components/HomeHero";
 import { OnboardingStepper } from "@/components/OnboardingStepper";
-import { ArrowIcon, PageHeader, StatCard } from "@/components/PageChrome";
+import { ArrowIcon, StatCard } from "@/components/PageChrome";
 import { SeverityBadge } from "@/components/ui/SeverityBadge";
-import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Spinner } from "@/components/ui/Spinner";
 import { getDashboard, seedDemo, type DashboardSummary } from "@/lib/api";
 import { KIND_LABEL } from "@/lib/labels";
-import { cn, gradeToneClass } from "@/lib/utils";
+import { cn, gradeToneClass, humanizeFields } from "@/lib/utils";
 import { SEVERITY_DOT_CLASS } from "@/components/ui/SeverityBadge";
 import type { Severity } from "@/lib/types";
 
@@ -54,41 +53,35 @@ export default function DashboardPage() {
     );
   }
 
-  const empty = summary.artifacts === 0;
   const sevTotal = Math.max(
     SEVERITY_ORDER.reduce((acc, s) => acc + (summary.by_severity[s] ?? 0), 0),
     1,
   );
-  const openFindings = summary.recent_findings.filter((f) => f.status === "open");
+  const open = summary.recent_findings.filter((f) => f.status === "open");
+
+  // Lead with the most serious finding, not the most recent one. A judge or a
+  // first-time reader should meet the strongest evidence first.
+  const rank = (s: string) => {
+    const i = SEVERITY_ORDER.indexOf(s as (typeof SEVERITY_ORDER)[number]);
+    return i === -1 ? SEVERITY_ORDER.length : i;
+  };
+  const featured =
+    [...open].sort((a, b) => rank(a.severity) - rank(b.severity))[0] ??
+    summary.recent_findings[0] ??
+    null;
+
+  // Shown in the hero already, so it should not repeat as row one below.
+  const openFindings = open.filter((f) => f.id !== featured?.id);
+  const shown = openFindings.slice(0, 7);
+  // recent_findings is a capped sample, so the true remainder comes from the
+  // open_reviews total minus what is actually on screen (rows plus the hero).
+  const remaining = Math.max(summary.open_reviews - shown.length - (featured ? 1 : 0), 0);
 
   return (
     <div>
-      <PageHeader
-        eyebrow={
-          <>
-            <span>{summary.artifacts} files uploaded</span>
-            <span className="text-[var(--foreground-faint)]">·</span>
-            <span>{summary.findings_total} things found</span>
-            <span className="text-[var(--foreground-faint)]">·</span>
-            <span className="font-semibold text-[var(--medium)]">{summary.open_reviews} need your review</span>
-          </>
-        }
-        title="Your overview"
-        subtitle="We check your uploaded data for problems and show you exactly why. Nothing here is a final answer, you always decide what to do next."
-        actions={
-          empty ? (
-            <Button onClick={handleSeed} disabled={seeding}>
-              {seeding ? <><Spinner className="size-3.5" /> Loading a sample…</> : "Try a sample"}
-            </Button>
-          ) : (
-            <Button variant="ghost" onClick={handleSeed} disabled={seeding} className="text-sm">
-              {seeding ? <><Spinner className="size-3.5" /> Loading…</> : "Load sample data"}
-            </Button>
-          )
-        }
-      />
+      <HomeHero summary={summary} featured={featured} onSeed={handleSeed} seeding={seeding} />
 
-      {/* Hero: problems that need review, first thing you see */}
+      {/* The queue itself, directly under the pitch so the proof is one scroll away */}
       <section id="open-queue" className="panel overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3.5 sm:px-5">
           <h2 className="flex flex-wrap items-center gap-2 text-[15px] font-semibold text-[var(--foreground)]">
@@ -107,7 +100,7 @@ export default function DashboardPage() {
 
         <div className="divide-y divide-[var(--border)]">
           <AnimatePresence initial={false}>
-            {openFindings.slice(0, 7).map((finding, i) => (
+            {shown.map((finding, i) => (
               <motion.div
                 key={finding.id}
                 layout
@@ -124,10 +117,10 @@ export default function DashboardPage() {
                     <span className={`mt-1.5 size-2 shrink-0 rounded-full ${SEVERITY_DOT_CLASS[finding.severity as Severity]}`} aria-hidden />
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="truncate text-[15px] font-medium leading-tight group-hover:text-[var(--brand)]">{finding.title}</span>
+                        <span className="truncate text-[15px] font-medium leading-tight group-hover:text-[var(--brand)]">{humanizeFields(finding.title)}</span>
                         <SeverityBadge severity={finding.severity as never} className="shrink-0 scale-90 sm:scale-100" />
                       </div>
-                      <div className="mt-1 hidden truncate text-sm leading-relaxed text-[var(--foreground-muted)] sm:block">{finding.summary}</div>
+                      <div className="mt-1 hidden truncate text-sm leading-relaxed text-[var(--foreground-muted)] sm:block">{humanizeFields(finding.summary)}</div>
                       <div className="mt-1.5 hidden flex-wrap items-center gap-1.5 text-xs text-[var(--foreground-faint)] sm:flex">
                         <span>{KIND_LABEL[finding.kind] ?? finding.kind}</span>
                         <span>·</span>
@@ -148,7 +141,7 @@ export default function DashboardPage() {
             ))}
           </AnimatePresence>
 
-          {!openFindings.length && (
+          {!open.length && (
             <div className="px-4 py-12 text-center">
               <div className="text-[15px] font-medium text-[var(--foreground)]">Nothing needs your review right now</div>
               <p className="mt-1.5 text-sm leading-relaxed text-[var(--foreground-muted)]">
@@ -165,7 +158,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {summary.findings_total > 0 && openFindings.length === 0 && summary.recent_findings.length > 0 && (
+          {summary.findings_total > 0 && open.length === 0 && summary.recent_findings.length > 0 && (
             <div className="divide-y divide-[var(--border)]">
               {summary.recent_findings.slice(0, 4).map((f) => (
                 <Link key={f.id} href={`/findings/${encodeURIComponent(f.id)}`} className="item-row opacity-70 hover:opacity-100">
@@ -180,52 +173,37 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {summary.findings_total > openFindings.length && openFindings.length > 0 && (
+        {remaining > 0 && shown.length > 0 && (
           <div className="border-t border-[var(--border)] px-4 py-3 text-center text-sm text-[var(--foreground-muted)]">
-            {summary.findings_total - openFindings.length} more to review ·{" "}
+            {remaining.toLocaleString("en-IN")} more to review ·{" "}
             <Link href="/findings" className="font-medium text-[var(--brand)] hover:underline">see all</Link>
           </div>
         )}
       </section>
 
-      {empty && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-4">
-          <EmptyState
-            icon={<ArrowIcon className="size-5" />}
-            title="No files yet, let's start with one"
-            hint="Click 'Try a sample' to see 6 files and 20 things we found, or upload your own file in Your files. Next, look at what we found, then try asking a question."
-          />
-        </motion.div>
-      )}
-
       {/* Compact stats, secondary row */}
       <div className="mt-4 grid gap-2.5 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Files uploaded" variant="compact" delay={0.04} hint="Safely stored">
+        <StatCard label="Files uploaded" variant="compact" hint="Safely stored">
           <span className="text-[var(--foreground)]"><AnimatedNumber value={summary.artifacts} /></span>
         </StatCard>
-        <StatCard label="Rows checked" variant="compact" delay={0.08} hint={`${formatBytes(summary.bytes_total)} total`}>
+        <StatCard label="Rows checked" variant="compact" hint={`${formatBytes(summary.bytes_total)} total`}>
           <span className="text-[var(--brand)]"><AnimatedNumber value={summary.rows_total} /></span>
         </StatCard>
-        <StatCard label="Things found" variant="compact" delay={0.12} hint={`${summary.open_reviews} need review`}>
+        <StatCard label="Things found" variant="compact" hint={`${summary.open_reviews} need review`}>
           <span className="text-[var(--medium)]"><AnimatedNumber value={summary.findings_total} /></span>
         </StatCard>
-        <StatCard label="Data quality" variant="compact" delay={0.16} hint="Out of 100">
+        <StatCard label="Data quality" variant="compact" hint="Out of 100">
           {summary.avg_fitness !== null ? (
             <span className="text-[var(--good)]"><AnimatedNumber value={summary.avg_fitness} decimals={1} /></span>
           ) : (
-            <span className="text-[var(--foreground-faint)]">—</span>
+            <span className="text-[var(--foreground-faint)]">&mdash;</span>
           )}
         </StatCard>
       </div>
 
       {/* Secondary density: severity scan + by engine */}
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.18 }}
-          className="panel p-5"
-        >
+        <section className="panel p-5">
           <h2 className="text-sm font-semibold text-[var(--foreground)]">How serious are they?</h2>
           <div className="mt-3.5 space-y-2.5">
             {SEVERITY_ORDER.map((sev, i) => {
@@ -239,7 +217,7 @@ export default function DashboardPage() {
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${(count / sevTotal) * 100}%` }}
-                      transition={{ duration: 0.65, delay: 0.22 + i * 0.05 }}
+                      transition={{ duration: 0.6, delay: 0.05 * i, ease: [0.16, 1, 0.3, 1] }}
                       className={`h-full rounded-full ${SEVERITY_DOT_CLASS[sev as Severity]}`}
                     />
                   </div>
@@ -251,66 +229,57 @@ export default function DashboardPage() {
 
           <h2 className="mt-6 text-sm font-semibold text-[var(--foreground)]">What kind of problem</h2>
           <div className="mt-2.5 flex flex-wrap gap-1.5">
-            {Object.entries(summary.by_kind).map(([kind, count], i) => (
-              <motion.span
+            {Object.entries(summary.by_kind).map(([kind, count]) => (
+              <span
                 key={kind}
-                initial={{ scale: 0.92, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.32 + i * 0.04 }}
                 className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-sm"
               >
                 <span className="text-[var(--foreground-muted)]">{KIND_LABEL[kind] ?? kind}</span>
                 <span className="font-semibold text-[var(--brand)]">{count}</span>
-              </motion.span>
+              </span>
             ))}
-            {!Object.keys(summary.by_kind).length && <span className="text-sm text-[var(--foreground-faint)]">Nothing found yet</span>}
+            {!Object.keys(summary.by_kind).length && <span className="text-sm text-[var(--foreground-muted)]">Nothing found yet</span>}
           </div>
-        </motion.section>
+        </section>
 
-        <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.22 }}
-          className="panel p-5"
-        >
+        <section className="panel p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-[var(--foreground)]">Recently uploaded</h2>
             <Link href="/datasets" className="text-sm font-medium text-[var(--brand)] hover:underline">See all</Link>
           </div>
           <div className="mt-3 divide-y divide-[var(--border)] rounded-xl border border-[var(--border)]">
-            {summary.recent_artifacts.slice(0, 5).map((art, i) => (
-              <motion.div key={art.artifact_id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 + i * 0.05 }}>
-                <Link
-                  href={`/datasets/${encodeURIComponent(art.artifact_id)}`}
-                  className="flex items-center justify-between gap-3 px-3.5 py-3 transition hover:bg-[var(--background)] group"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-[15px] font-medium group-hover:text-[var(--brand)]">{art.title || art.artifact_id}</div>
-                    <div className="mt-0.5 text-sm text-[var(--foreground-faint)]">
-                      {art.row_count !== null ? `${art.row_count.toLocaleString("en-IN")} rows` : "Checking…"}
-                    </div>
+            {summary.recent_artifacts.slice(0, 5).map((art) => (
+              <Link
+                key={art.artifact_id}
+                href={`/datasets/${encodeURIComponent(art.artifact_id)}`}
+                className="group flex items-center justify-between gap-3 px-3.5 py-3 transition hover:bg-[var(--background)]"
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-[15px] font-medium group-hover:text-[var(--brand)]">{art.title || art.artifact_id}</div>
+                  <div className="mt-0.5 text-sm text-[var(--foreground-muted)]">
+                    {art.row_count !== null ? `${art.row_count.toLocaleString("en-IN")} rows` : "Checking…"}
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {art.fitness_grade ? (
-                      <span
-                        className={cn("inline-flex size-8 items-center justify-center rounded-lg border text-sm font-bold", gradeToneClass(art.fitness_grade))}
-                      >
-                        {art.fitness_grade}
-                      </span>
-                    ) : (
-                      <span className="size-8 rounded-lg border border-[var(--border)] bg-[var(--background)]" />
-                    )}
-                    <ArrowIcon className="size-4 text-[var(--foreground-faint)]" />
-                  </div>
-                </Link>
-              </motion.div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {art.fitness_grade ? (
+                    <span
+                      className={cn("inline-flex size-8 items-center justify-center rounded-lg border text-sm font-bold", gradeToneClass(art.fitness_grade))}
+                    >
+                      {art.fitness_grade}
+                    </span>
+                  ) : (
+                    <span className="size-8 rounded-lg border border-[var(--border)] bg-[var(--background)]" />
+                  )}
+                  <ArrowIcon className="size-4 text-[var(--foreground-faint)]" />
+                </div>
+              </Link>
             ))}
             {!summary.recent_artifacts.length && (
-              <div className="px-3.5 py-8 text-center text-sm text-[var(--foreground-faint)]">No files yet, upload one or try a sample.</div>
+              <div className="px-3.5 py-8 text-center text-sm text-[var(--foreground-muted)]">No files yet, upload one or try a sample.</div>
             )}
           </div>
-          <p className="mt-2.5 text-sm leading-relaxed text-[var(--foreground-faint)]">Once uploaded, a file can&apos;t be secretly changed. We keep a permanent, verified copy.</p>
-        </motion.section>
+          <p className="mt-2.5 text-sm leading-relaxed text-[var(--foreground-muted)]">Once uploaded, a file can&apos;t be secretly changed. We keep a permanent, verified copy.</p>
+        </section>
       </div>
 
       {/* Stepper, secondary, integrated */}

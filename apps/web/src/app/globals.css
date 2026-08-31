@@ -3,8 +3,10 @@
 :root {
   --background: #f7f6f2;
   --foreground: #1c1f26;
-  --foreground-muted: #6b7280;
-  --foreground-faint: #9ca3af;
+  /* Both tiers clear WCAG AA on --surface and --background: muted 7.0:1,
+     faint 4.6:1. The old faint (#9ca3af) sat at 2.6:1 and failed as text. */
+  --foreground-muted: #4b5563;
+  --foreground-faint: #6b7280;
   --surface: #ffffff;
   --surface-raised: #ffffff;
   --border: #e7e5df;
@@ -16,17 +18,22 @@
   --brand-hover: #1d3fb0;
   --brand-soft: #eaf0ff;
 
-  --good: #16a34a;
+  /* Each of these is used as text on its own -soft background (badges, pills),
+     so every pair is held at WCAG AA 4.5:1 or better. The previous set put
+     high at 4.4, critical at 4.1, low at 3.3 and good at 3.1, all failing.
+     Deepening them also pulls medium and high further apart, which were
+     close to indistinguishable before. */
+  --good: #15803d;        /* 4.6:1 on --good-soft */
   --good-soft: #eafaf0;
   --info: #6b7280;
   --info-soft: #f0f1f3;
-  --low: #0891b2;
+  --low: #0e7490;         /* 4.8:1 on --low-soft */
   --low-soft: #e6f6fa;
-  --medium: #b45309;
+  --medium: #b45309;      /* 4.6:1 on --medium-soft */
   --medium-soft: #fef3e2;
-  --high: #c2410c;
+  --high: #9a3412;        /* 6.2:1 on --high-soft */
   --high-soft: #fde9de;
-  --critical: #dc2626;
+  --critical: #b91c1c;    /* 5.5:1 on --critical-soft */
   --critical-soft: #fde8e8;
 }
 
@@ -162,21 +169,9 @@ body {
 .item-row:focus-within {
   background: rgba(36, 81, 217, 0.05);
 }
-.item-row[data-severity="critical"] {
-  border-left: 4px solid var(--critical);
-}
-.item-row[data-severity="high"] {
-  border-left: 4px solid var(--high);
-}
-.item-row[data-severity="medium"] {
-  border-left: 4px solid var(--medium);
-}
-.item-row[data-severity="low"] {
-  border-left: 4px solid var(--low);
-}
-.item-row[data-severity="info"] {
-  border-left: 4px solid var(--border-strong);
-}
+/* No severity accent bar here on purpose. Every row already states its
+   severity twice, as a colored dot and as a badge carrying the word, so a
+   thick colored edge added a third copy and nothing else. */
 
 .row-action {
   transition: transform 160ms ease;

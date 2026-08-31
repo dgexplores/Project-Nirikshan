@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/Input";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Spinner } from "@/components/ui/Spinner";
 import { Panel } from "@/components/ui/Panel";
-import { listArtifacts, uploadArtifact, pollJob, type ArtifactSummary } from "@/lib/api";
+import { listArtifacts, listFindings, uploadArtifact, pollJob, type ArtifactSummary } from "@/lib/api";
 import type { Job } from "@/lib/types";
 import { cn, gradeToneClass } from "@/lib/utils";
 
@@ -39,6 +39,9 @@ export default function DatasetsPage() {
   const [title, setTitle] = useState("");
   const [releaseDate, setReleaseDate] = useState("");
   const [job, setJob] = useState<Job | null>(null);
+  const [query, setQuery] = useState("");
+  // How many open problems each file has, so this page links into the queue.
+  const [problemCounts, setProblemCounts] = useState<Record<string, number>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -46,6 +49,17 @@ export default function DatasetsPage() {
     listArtifacts()
       .then((res) => setItems(res.items))
       .catch((e: Error) => setError(e.message));
+
+    listFindings({ status: "open", limit: 500 })
+      .then((res) => {
+        const counts: Record<string, number> = {};
+        for (const f of res.items) {
+          for (const id of f.artifact_ids ?? []) counts[id] = (counts[id] ?? 0) + 1;
+        }
+        setProblemCounts(counts);
+      })
+      // A missing count only dims this page's extra detail, the list still works.
+      .catch(() => setProblemCounts({}));
   }, []);
 
   useEffect(load, [load]);
@@ -94,11 +108,15 @@ export default function DatasetsPage() {
 
   if (error && !items) return <ErrorState message={error} onRetry={load} />;
 
+  const needle = query.trim().toLowerCase();
+  const visible = (items ?? []).filter((a) =>
+    `${a.title ?? ""} ${a.artifact_id}`.toLowerCase().includes(needle),
+  );
+
   return (
     <div>
       <Breadcrumb items={[{ label: "Overview", href: "/" }, { label: "Your files" }]} />
       <PageHeader
-        eyebrow={<span>{items ? `${items.length} files uploaded` : "Loading…"}</span>}
         title="Your files"
         subtitle="Every file you upload gets a permanent, verified copy that can't be changed later. We check its quality automatically."
       />
@@ -228,13 +246,25 @@ export default function DatasetsPage() {
             <div className="panel overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-3">
                 <h2 className="text-sm font-semibold text-[var(--foreground)]">
-                  {items.length} file{items.length === 1 ? "" : "s"} uploaded
+                  {visible.length === items.length
+                    ? `${items.length} file${items.length === 1 ? "" : "s"} uploaded`
+                    : `${visible.length} of ${items.length} files`}
                 </h2>
+                {items.length > 4 && (
+                  <Input
+                    type="search"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search files by name…"
+                    aria-label="Search your files by name"
+                    className="h-9 w-full text-sm sm:w-64"
+                  />
+                )}
               </div>
 
               <div className="divide-y divide-[var(--border)]">
                 <AnimatePresence initial={false}>
-                  {items.map((art, i) => (
+                  {visible.map((art, i) => (
                     <motion.div
                       key={art.artifact_id}
                       layout
@@ -256,6 +286,14 @@ export default function DatasetsPage() {
                               <>
                                 <span className="text-[var(--foreground-faint)]">·</span>
                                 <span className="text-[var(--medium)]">{art.quality_flag_count} thing{art.quality_flag_count === 1 ? "" : "s"} to check</span>
+                              </>
+                            )}
+                            {(problemCounts[art.artifact_id] ?? 0) > 0 && (
+                              <>
+                                <span className="text-[var(--foreground-faint)]">·</span>
+                                <span className="font-medium text-[var(--high)]">
+                                  {problemCounts[art.artifact_id]} problem{problemCounts[art.artifact_id] === 1 ? "" : "s"} found
+                                </span>
                               </>
                             )}
                             <span className="hidden sm:inline"><HashText hash={art.sha256} /></span>

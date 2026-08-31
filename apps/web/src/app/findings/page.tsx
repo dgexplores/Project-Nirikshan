@@ -10,8 +10,10 @@ import { SeverityBadge } from "@/components/ui/SeverityBadge";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Spinner } from "@/components/ui/Spinner";
 import { Select } from "@/components/ui/Select";
+import { FindingsOverview } from "@/components/charts/FindingsOverview";
 import { listFindings, type FindingsParams } from "@/lib/api";
 import { KIND_LABEL } from "@/lib/labels";
+import { humanizeFields } from "@/lib/utils";
 import { STATUS_LABEL } from "@/components/ui/StatusBadge";
 import type { UnifiedFinding } from "@/lib/types";
 
@@ -26,7 +28,9 @@ export default function FindingsPage() {
   const [params, setParams] = useState<FindingsParams>({ status: "open" });
 
   const load = useCallback(() => {
-    listFindings(params)
+    // The breakdown above the list aggregates these rows, so pull the full
+    // matching set (API caps at 500) rather than a first page of 100.
+    listFindings({ ...params, limit: 500 })
       .then((res) => {
         setItems(res.items);
         setTotal(res.total ?? res.items.length);
@@ -46,9 +50,8 @@ export default function FindingsPage() {
     <div>
       <Breadcrumb items={[{ label: "Overview", href: "/" }, { label: "Problems found" }]} />
       <PageHeader
-        eyebrow={<span>{total} matching what you see below</span>}
         title="Problems found"
-        subtitle="Every problem here comes with proof so you can check it yourself. We never say who's right, you decide."
+        subtitle={`${total.toLocaleString("en-IN")} match your filters. Every one comes with proof so you can check it yourself. We never say who's right, you decide.`}
       />
       <HelpBanner
         title="Click any row to see the proof, then decide what to do"
@@ -86,6 +89,16 @@ export default function FindingsPage() {
         )}
       </div>
 
+      {items && items.length > 0 && (
+        <FindingsOverview
+          items={items}
+          severity={params.severity}
+          kind={params.kind}
+          onSeverity={(v) => update({ severity: v || undefined })}
+          onKind={(v) => update({ kind: v || undefined })}
+        />
+      )}
+
       {!items ? (
         <div className="flex justify-center py-24">
           <Spinner />
@@ -111,8 +124,8 @@ export default function FindingsPage() {
                     <div className="flex min-w-0 items-start gap-3">
                       <SeverityBadge severity={finding.severity} className="mt-0.5 shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <span className="block truncate text-[15px] font-medium leading-tight group-hover:text-[var(--brand)]">{finding.title}</span>
-                        <span className="mt-1 hidden line-clamp-1 text-sm leading-relaxed text-[var(--foreground-muted)] sm:block">{finding.summary}</span>
+                        <span className="block truncate text-[15px] font-medium leading-tight group-hover:text-[var(--brand)]">{humanizeFields(finding.title)}</span>
+                        <span className="mt-1 hidden line-clamp-1 text-sm leading-relaxed text-[var(--foreground-muted)] sm:block">{humanizeFields(finding.summary)}</span>
                         <span className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-[var(--foreground-faint)]">
                           <span>{KIND_LABEL[finding.kind] ?? finding.kind}</span>
                           <span>·</span>

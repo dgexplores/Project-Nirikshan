@@ -14,6 +14,16 @@ import { compareArtifacts, listArtifacts, getProfile, type ArtifactSummary } fro
 import type { CompareResponse, DatasetProfile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { GATE_LABEL, GATE_STATE_LABEL } from "@/lib/labels";
+import { BarList } from "@/components/charts/BarList";
+
+/** Plain-language gap between the two totals being compared. */
+function totalsGap(totals: Record<string, { column: string; total: number }>) {
+  const values = Object.values(totals).map((t) => t.total);
+  if (values.length !== 2) return null;
+  const hi = Math.max(...values);
+  const lo = Math.min(...values);
+  return { diff: hi - lo, pct: lo > 0 ? ((hi - lo) / lo) * 100 : null };
+}
 
 const OVERALL_LABEL: Record<string, string> = {
   comparable: "Yes, you can compare these",
@@ -198,6 +208,36 @@ export default function ComparePage() {
                   ))}
                 </div>
               </div>
+
+              {Object.keys(result.totals).length === 2 && (
+                <Panel className="p-4 sm:p-5">
+                  <h3 className="text-sm font-semibold text-[var(--foreground)]">How the two totals compare</h3>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--foreground-faint)]">
+                    Both drawn on the same scale, so the gap you see is the real gap.
+                  </p>
+                  <BarList
+                    className="mt-3"
+                    data={Object.entries(result.totals).map(([aid, t]) => ({
+                      key: aid,
+                      label: `${artifacts.find((a) => a.artifact_id === aid)?.title || aid} · ${t.column}`,
+                      value: Math.round(t.total),
+                    }))}
+                  />
+                  {(() => {
+                    const gap = totalsGap(result.totals);
+                    if (!gap) return null;
+                    return (
+                      <p className="mt-3 border-t border-[var(--border)] pt-3 text-sm leading-relaxed text-[var(--foreground-muted)]">
+                        They differ by{" "}
+                        <strong className="font-semibold text-[var(--foreground)]">
+                          {Math.round(gap.diff).toLocaleString("en-IN")}
+                        </strong>
+                        {gap.pct !== null && <>, so the bigger one is {gap.pct.toFixed(1)}% higher.</>}
+                      </p>
+                    );
+                  })()}
+                </Panel>
+              )}
 
               <div className="grid gap-4 lg:grid-cols-2">
                 <Panel className="p-4">

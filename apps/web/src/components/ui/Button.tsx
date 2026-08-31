@@ -9,6 +9,14 @@ const VARIANTS: Record<Variant, string> = {
     "border border-[var(--border)] bg-white text-[var(--foreground)] hover:border-[var(--border-strong)] hover:bg-[var(--background)]",
 };
 
+const BASE =
+  "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm transition-all duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100";
+
+/** Same look as <Button> for anchors and Links, which can't be a <button>. */
+export function buttonClass(variant: Variant = "primary", className?: string) {
+  return cn(BASE, VARIANTS[variant], className);
+}
+
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -20,15 +28,5 @@ export function Button({
   type = "button",
   ...props
 }: ButtonProps) {
-  return (
-    <button
-      type={type}
-      className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 text-sm transition-all duration-150 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100",
-        VARIANTS[variant],
-        className,
-      )}
-      {...props}
-    />
-  );
+  return <button type={type} className={buttonClass(variant, className)} {...props} />;
 }
