@@ -367,12 +367,15 @@ uv run bdd eval report <run_id>
 - `docs/adr/ADR-0001-repository-layout.md`
 - `docs/UI_Finish_Gate_Report.md`
 - `docs/PROTOTYPE_VIDEO_SCRIPT.md`, UNLEASH prototype video walkthrough script
+- [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md), what is built, what is still open, and the commands to pick each open item back up
 
 ---
 
 ## Status
 
 Launch-ready v1.3: v1.0 platform + Benford screening + fuzzy geo resolution + `bdd` CLI + blind benchmark evaluation runner (see Roadmap for the ledger).
+
+For the current build state, what is deployed versus what is only on `main`, and the exact steps remaining, see [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md).
 
 ---
 
