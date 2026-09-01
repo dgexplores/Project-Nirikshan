@@ -13,6 +13,13 @@ export function humanizeFields(text: string): string {
   return text.replace(/[A-Za-z0-9]+(?:_[A-Za-z0-9]+)+/g, (id) => id.replace(/_/g, " "));
 }
 
+/** `art-real-mgnrega-punjab` reads as "Real mgnrega punjab". Enough to tell
+ *  files apart without a second request for their titles. */
+export function fileLabel(artifactId: string): string {
+  const words = artifactId.replace(/^art-/, "").replace(/[-_]/g, " ").trim();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 // Color classes for a fitness grade badge (A/B good, C medium, D/F high).
 // Callers compose their own size/shape classes around this.
 export function gradeToneClass(grade: string): string {

@@ -3,6 +3,7 @@
 import { BarList, type BarDatum } from "@/components/charts/BarList";
 import { SEVERITY_DOT_CLASS } from "@/components/ui/SeverityBadge";
 import { KIND_LABEL } from "@/lib/labels";
+import { fileLabel } from "@/lib/utils";
 import type { Severity, UnifiedFinding } from "@/lib/types";
 
 const SEVERITY_ORDER: Severity[] = ["critical", "high", "medium", "low", "info"];
@@ -14,13 +15,6 @@ const SEVERITY_LABEL: Record<string, string> = {
   low: "Low",
   info: "Info",
 };
-
-/** `art-real-mgnrega-punjab` reads as "Real mgnrega punjab". Good enough to
- *  tell files apart at a glance without a second request for their titles. */
-function fileLabel(artifactId: string): string {
-  const words = artifactId.replace(/^art-/, "").replace(/[-_]/g, " ").trim();
-  return words.charAt(0).toUpperCase() + words.slice(1);
-}
 
 function countBy<T>(items: T[], key: (item: T) => string | undefined): Map<string, number> {
   const out = new Map<string, number>();
@@ -42,12 +36,16 @@ export function FindingsOverview({
   kind,
   onSeverity,
   onKind,
+  showFiles = true,
 }: {
   items: UnifiedFinding[];
   severity?: string;
   kind?: string;
   onSeverity: (value: string) => void;
   onKind: (value: string) => void;
+  /** Hidden when the view is already scoped to one file, where a
+   *  single-bar chart would say nothing the filter chip has not. */
+  showFiles?: boolean;
 }) {
   const bySeverity = countBy(items, (f) => f.severity);
   const severityData: BarDatum[] = SEVERITY_ORDER.filter((s) => (bySeverity.get(s) ?? 0) > 0).map((s) => ({
@@ -70,7 +68,7 @@ export function FindingsOverview({
 
   return (
     <section className="panel mb-4 p-5" aria-label="Breakdown of the problems shown below">
-      <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
+      <div className={`grid gap-6 lg:gap-8 ${showFiles ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}>
         <div>
           <h2 className="text-sm font-semibold text-[var(--foreground)]">How serious are they?</h2>
           <p className="mt-1 text-xs leading-relaxed text-[var(--foreground-faint)]">
@@ -97,13 +95,15 @@ export function FindingsOverview({
           />
         </div>
 
-        <div>
-          <h2 className="text-sm font-semibold text-[var(--foreground)]">Which file has the most?</h2>
-          <p className="mt-1 text-xs leading-relaxed text-[var(--foreground-faint)]">
-            Where the problems are concentrated.
-          </p>
-          <BarList className="mt-3" data={fileData} emptyText="No files linked yet" />
-        </div>
+        {showFiles && (
+          <div>
+            <h2 className="text-sm font-semibold text-[var(--foreground)]">Which file has the most?</h2>
+            <p className="mt-1 text-xs leading-relaxed text-[var(--foreground-faint)]">
+              Where the problems are concentrated.
+            </p>
+            <BarList className="mt-3" data={fileData} emptyText="No files linked yet" />
+          </div>
+        )}
       </div>
     </section>
   );

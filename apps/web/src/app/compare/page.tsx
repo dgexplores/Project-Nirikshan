@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Breadcrumb } from "@/components/Breadcrumb";
-import { HelpBanner } from "@/components/OnboardingStepper";
 import { HashText, PageHeader } from "@/components/PageChrome";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -112,13 +110,6 @@ export default function ComparePage() {
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Overview", href: "/" }, { label: "Compare" }]} />
-      <HelpBanner
-        title="We check they're comparable before comparing numbers"
-        desc="Pick two files and the same column. We make sure they mean the same thing (same place, time period, and units) before comparing them."
-        href="/datasets"
-        cta="Your files"
-      />
       <PageHeader
         title="Compare two files"
         subtitle="We never say one side is wrong, we just check whether the two files can be fairly compared, and show you what we found."

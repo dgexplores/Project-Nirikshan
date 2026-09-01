@@ -6,7 +6,6 @@ import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { formatBytes } from "@/components/AnimatedNumber";
 import { Breadcrumb } from "@/components/Breadcrumb";
-import { HelpBanner } from "@/components/OnboardingStepper";
 import { ArrowIcon, HashText, PageHeader } from "@/components/PageChrome";
 import { LineageViz } from "@/components/LineageViz";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -94,12 +93,6 @@ export default function DatasetDetailPage() {
   return (
     <div>
       <Breadcrumb items={[{ label: "Overview", href: "/" }, { label: "Your files", href: "/datasets" }, { label: manifest.source.official_title || id }]} />
-      <HelpBanner
-        title="Columns is your file's contents, Where this came from proves it's real"
-        desc="Every step is checked using the same hash and reader, so re-running it gives you the exact same result every time."
-        href="/findings"
-        cta="See problems found"
-      />
       <PageHeader
         eyebrow={<HashText hash={manifest.sha256} />}
         title={manifest.source.official_title || manifest.artifact_id}
@@ -114,10 +107,10 @@ export default function DatasetDetailPage() {
         actions={
           <>
             <Link
-              href="/findings"
+              href={`/findings?file=${encodeURIComponent(id)}`}
               className="hidden rounded-full border border-[var(--border)] bg-white px-3.5 py-2 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--background)] sm:inline-flex"
             >
-              See problems found
+              See this file&apos;s problems
             </Link>
             <Button variant="ghost" onClick={handleAnalyze} disabled={analyzing} className="text-sm">
               {analyzing ? <><Spinner className="size-3.5" /> Checking…</> : "Check again"}

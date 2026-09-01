@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { formatBytes } from "@/components/AnimatedNumber";
-import { Breadcrumb } from "@/components/Breadcrumb";
 import { HelpBanner } from "@/components/OnboardingStepper";
 import { ArrowIcon, HashText, PageHeader } from "@/components/PageChrome";
 import { ProgressSteps } from "@/components/ProgressSteps";
@@ -115,17 +114,18 @@ export default function DatasetsPage() {
 
   return (
     <div>
-      <Breadcrumb items={[{ label: "Overview", href: "/" }, { label: "Your files" }]} />
       <PageHeader
         title="Your files"
         subtitle="Every file you upload gets a permanent, verified copy that can't be changed later. We check its quality automatically."
       />
-      <HelpBanner
-        title="Drop a file on the left, see it appear on the right"
-        desc="After it's checked, we'll take you straight to its details: quality, where it came from, and its score."
-        href="/findings"
-        cta="See problems found"
-      />
+      {items?.length === 0 && (
+        <HelpBanner
+          title="Drop a file on the left, see it appear on the right"
+          desc="After it's checked, we'll take you straight to its details: quality, where it came from, and its score."
+          href="/findings"
+          cta="See problems found"
+        />
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
         {/* Upload panel */}
@@ -296,6 +296,7 @@ export default function DatasetsPage() {
                                 </span>
                               </>
                             )}
+
                             <span className="hidden sm:inline"><HashText hash={art.sha256} /></span>
                           </div>
                         </div>

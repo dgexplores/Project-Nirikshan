@@ -64,11 +64,6 @@ export function SiteNav() {
                 </li>
               );
             })}
-            <li className="hidden shrink-0 sm:block">
-              <Link href="/#how-it-works" className="inline-flex rounded-full px-3.5 py-2 text-sm text-[var(--foreground-faint)] hover:text-[var(--foreground-muted)]">
-                How it works
-              </Link>
-            </li>
           </ul>
         </nav>
       </div>

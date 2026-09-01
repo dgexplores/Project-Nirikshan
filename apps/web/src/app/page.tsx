@@ -53,10 +53,6 @@ export default function DashboardPage() {
     );
   }
 
-  const sevTotal = Math.max(
-    SEVERITY_ORDER.reduce((acc, s) => acc + (summary.by_severity[s] ?? 0), 0),
-    1,
-  );
   const open = summary.recent_findings.filter((f) => f.status === "open");
 
   // Lead with the most serious finding, not the most recent one. A judge or a
@@ -201,47 +197,9 @@ export default function DashboardPage() {
         </StatCard>
       </div>
 
-      {/* Secondary density: severity scan + by engine */}
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <section className="panel p-5">
-          <h2 className="text-sm font-semibold text-[var(--foreground)]">How serious are they?</h2>
-          <div className="mt-3.5 space-y-2.5">
-            {SEVERITY_ORDER.map((sev, i) => {
-              const count = summary.by_severity[sev] ?? 0;
-              return (
-                <div key={sev} className="flex items-center gap-3">
-                  <div className="w-20 shrink-0">
-                    <SeverityBadge severity={sev as (typeof SEVERITY_ORDER)[number]} />
-                  </div>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--background)]">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(count / sevTotal) * 100}%` }}
-                      transition={{ duration: 0.6, delay: 0.05 * i, ease: [0.16, 1, 0.3, 1] }}
-                      className={`h-full rounded-full ${SEVERITY_DOT_CLASS[sev as Severity]}`}
-                    />
-                  </div>
-                  <span className="w-8 text-right text-sm tabular-nums text-[var(--foreground-muted)]">{count}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          <h2 className="mt-6 text-sm font-semibold text-[var(--foreground)]">What kind of problem</h2>
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
-            {Object.entries(summary.by_kind).map(([kind, count]) => (
-              <span
-                key={kind}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-sm"
-              >
-                <span className="text-[var(--foreground-muted)]">{KIND_LABEL[kind] ?? kind}</span>
-                <span className="font-semibold text-[var(--brand)]">{count}</span>
-              </span>
-            ))}
-            {!Object.keys(summary.by_kind).length && <span className="text-sm text-[var(--foreground-muted)]">Nothing found yet</span>}
-          </div>
-        </section>
-
+      {/* Recently uploaded. The severity and kind breakdown lives on Problems
+          found, where the same bars double as filters instead of repeating here. */}
+      <div className="mt-4">
         <section className="panel p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-[var(--foreground)]">Recently uploaded</h2>

@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Breadcrumb } from "@/components/Breadcrumb";
-import { HelpBanner } from "@/components/OnboardingStepper";
 import { PageHeader } from "@/components/PageChrome";
 import { Button } from "@/components/ui/Button";
 import { ConfidencePill } from "@/components/ui/ConfidencePill";
@@ -83,13 +81,6 @@ export default function AskPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <Breadcrumb items={[{ label: "Overview", href: "/" }, { label: "Ask" }]} />
-      <HelpBanner
-        title="Ask in Hindi or English"
-        desc="Every answer comes with sources you can check. Try an example below, or pick specific files to search within."
-        href="/datasets"
-        cta="Your files"
-      />
       <PageHeader
         title="Ask a question"
         subtitle="We only answer using your uploaded data, and we always show our sources. If we're not sure, we'll say so instead of guessing."

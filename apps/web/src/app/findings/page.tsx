@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Breadcrumb } from "@/components/Breadcrumb";
-import { HelpBanner } from "@/components/OnboardingStepper";
 import { ArrowIcon, PageHeader } from "@/components/PageChrome";
 import { SeverityBadge } from "@/components/ui/SeverityBadge";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -13,7 +11,7 @@ import { Select } from "@/components/ui/Select";
 import { FindingsOverview } from "@/components/charts/FindingsOverview";
 import { listFindings, type FindingsParams } from "@/lib/api";
 import { KIND_LABEL } from "@/lib/labels";
-import { humanizeFields } from "@/lib/utils";
+import { fileLabel, humanizeFields } from "@/lib/utils";
 import { STATUS_LABEL } from "@/components/ui/StatusBadge";
 import type { UnifiedFinding } from "@/lib/types";
 
@@ -26,6 +24,14 @@ export default function FindingsPage() {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [params, setParams] = useState<FindingsParams>({ status: "open" });
+  // Set when arriving from a file, as /findings?file=<artifact_id>. Read off
+  // the URL directly rather than useSearchParams, which would require wrapping
+  // this statically prerendered page in a Suspense boundary.
+  const [fileId, setFileId] = useState("");
+
+  useEffect(() => {
+    setFileId(new URLSearchParams(window.location.search).get("file") ?? "");
+  }, []);
 
   const load = useCallback(() => {
     // The breakdown above the list aggregates these rows, so pull the full
@@ -46,18 +52,16 @@ export default function FindingsPage() {
 
   if (error && !items) return <ErrorState message={error} onRetry={load} />;
 
+  const visible = fileId
+    ? (items ?? []).filter((f) => f.artifact_ids?.includes(fileId))
+    : items;
+  const shownTotal = fileId ? (visible?.length ?? 0) : total;
+
   return (
     <div>
-      <Breadcrumb items={[{ label: "Overview", href: "/" }, { label: "Problems found" }]} />
       <PageHeader
         title="Problems found"
-        subtitle={`${total.toLocaleString("en-IN")} match your filters. Every one comes with proof so you can check it yourself. We never say who's right, you decide.`}
-      />
-      <HelpBanner
-        title="Click any row to see the proof, then decide what to do"
-        desc="Use the filters below to focus on what matters most, start with anything marked High or Critical."
-        href="/datasets"
-        cta="Your files"
+        subtitle={`${shownTotal.toLocaleString("en-IN")} match your filters. Every one comes with proof so you can check it yourself. We never say who's right, you decide.`}
       />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -82,6 +86,19 @@ export default function FindingsPage() {
             </option>
           ))}
         </Select>
+        {fileId && (
+          <button
+            onClick={() => {
+              setFileId("");
+              window.history.replaceState(null, "", "/findings");
+            }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--brand)]/30 bg-[var(--brand-soft)] px-3 py-1.5 text-sm font-medium text-[var(--brand)]"
+          >
+            File: {fileLabel(fileId)}
+            <span aria-hidden>&times;</span>
+            <span className="sr-only">Clear the file filter</span>
+          </button>
+        )}
         {(params.severity || params.kind || params.status) && (
           <button onClick={() => setParams({})} className="rounded-full border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--foreground-muted)] transition hover:bg-[var(--background)]">
             Clear filters
@@ -89,17 +106,18 @@ export default function FindingsPage() {
         )}
       </div>
 
-      {items && items.length > 0 && (
+      {visible && visible.length > 0 && (
         <FindingsOverview
-          items={items}
+          items={visible}
           severity={params.severity}
           kind={params.kind}
           onSeverity={(v) => update({ severity: v || undefined })}
           onKind={(v) => update({ kind: v || undefined })}
+          showFiles={!fileId}
         />
       )}
 
-      {!items ? (
+      {!visible ? (
         <div className="flex justify-center py-24">
           <Spinner />
         </div>
@@ -107,7 +125,7 @@ export default function FindingsPage() {
         <div className="panel overflow-hidden">
           <div className="divide-y divide-[var(--border)]">
             <AnimatePresence initial={false}>
-              {items.map((finding, i) => (
+              {visible.map((finding, i) => (
                 <motion.div
                   key={finding.id}
                   layout
@@ -153,7 +171,7 @@ export default function FindingsPage() {
             </AnimatePresence>
           </div>
 
-          {!items.length && (
+          {!visible.length && (
             <div className="px-4 py-14 text-center">
               <div className="text-[15px] font-medium text-[var(--foreground)]">Nothing matches these filters</div>
               <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-[var(--foreground-muted)]">
