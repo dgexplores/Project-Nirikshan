@@ -40,7 +40,13 @@ const GATE_STATE_CLASS: Record<string, string> = {
 
 function numericColumns(profile: DatasetProfile | null): string[] {
   if (!profile) return [];
-  return profile.columns.filter((c) => c.dtype.startsWith("Int") || c.dtype.startsWith("Float")).map((c) => c.name);
+  // Offer measurements only. Comparing a call id or a month against another
+  // dataset's is meaningless, and this picker used to list them. `is_metric`
+  // comes from the backend so the rule is defined once, in Python; the dtype
+  // test is the fallback for profiles stored before that field existed.
+  return profile.columns
+    .filter((c) => c.is_metric ?? (c.dtype.startsWith("Int") || c.dtype.startsWith("Float")))
+    .map((c) => c.name);
 }
 
 export default function ComparePage() {

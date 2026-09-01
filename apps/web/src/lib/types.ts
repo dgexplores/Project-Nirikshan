@@ -39,6 +39,10 @@ export interface Distribution {
 export interface ColumnProfile {
   name: string;
   dtype: string;
+  /** Set by the backend. Optional because profiles stored before it existed
+   *  have no such key; call sites fall back to the dtype check. */
+  is_numeric?: boolean;
+  is_metric?: boolean;
   null_count: number;
   null_ratio: number;
   unique_count: number;

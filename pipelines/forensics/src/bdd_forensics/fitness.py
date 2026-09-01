@@ -95,7 +95,7 @@ def _identifier_exposure(profile: DatasetProfile) -> FitnessComponent:
 
 
 def _distribution_health(profile: DatasetProfile) -> FitnessComponent:
-    numeric = [c for c in profile.columns if c.dtype.startswith(("Int", "Float"))]
+    numeric = [c for c in profile.columns if c.is_metric]
     if not numeric:
         return FitnessComponent(name="distribution_health", score=80.0, weight=_WEIGHTS["distribution_health"], detail="no numeric columns to assess")
     degenerate = 0

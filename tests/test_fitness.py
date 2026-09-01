@@ -53,3 +53,19 @@ def test_deterministic() -> None:
     assert first.score == second.score
     assert first.grade == second.grade
     assert [c.model_dump() for c in first.components] == [c.model_dump() for c in second.components]
+
+
+def test_distribution_health_ignores_identifier_and_calendar_columns() -> None:
+    """An id or a calendar part is numeric, but it is not a measurement.
+
+    `month` is constant here, so it counts as zero-variance and used to pull
+    the data-quality score down over a column that has no expected shape.
+    """
+    csv = "district,call_id,month,amount\n" + "\n".join(
+        f"D{i},{1000 + i},6,{10 + i}" for i in range(10)
+    ) + "\n"
+    profile = _profile(csv)
+    assert {c.name for c in profile.columns if c.is_metric} == {"amount"}
+
+    health = next(c for c in compute_fitness(profile).components if c.name == "distribution_health")
+    assert health.score == 100.0, health.detail

@@ -55,11 +55,11 @@ def _base_name(column: str) -> tuple[str, str, float]:
 
 
 def infer_definition_cards(profile: DatasetProfile) -> list[DefinitionCard]:
-    """Infer one definition card per numeric column of a profile."""
+    """Infer one definition card per measured numeric column of a profile."""
     cards: list[DefinitionCard] = []
     seen: set[str] = set()
     for col in profile.columns:
-        if not col.dtype.startswith(("Int", "Float")):
+        if not col.is_metric:
             continue
         _, unit_label, _ = _base_name(col.name)
         card_key = f"{profile.artifact_id}:{col.name}"
