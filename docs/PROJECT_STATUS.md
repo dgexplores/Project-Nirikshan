@@ -1,6 +1,6 @@
 # Project status and handoff
 
-Last updated: 2026-08-31, at commit `fb5f776` on `main`.
+Last updated: 2026-09-02, at commit `dde0eb6` on `main`.
 
 This is the working record of what is finished, what is not, and the exact
 commands to pick each remaining item back up. The README is the pitch. This
@@ -14,11 +14,11 @@ file is the checklist.
 |---|---|
 | Code on `main` | Committed and pushed, working tree clean |
 | GitHub Actions CI | Passing, all 4 jobs |
-| Backend tests | 152 passing |
+| Backend tests | 155 passing |
 | Web production build | Clean, no new dependencies added |
 | Backend deploy (Railway) | Live and current |
-| Frontend deploy (Vercel) | **Stale.** Serving the build from 2026-08-30, missing the hero and charts |
-| Real data.gov.in findings | Present in the local database only, not on the live demo |
+| Frontend deploy (Vercel) | Live and current. Push-triggered deploys work again |
+| Real data.gov.in findings | Live on the deployed demo, 11 real artifacts of 18 |
 | Prototype video | Script written, not recorded |
 
 ---
@@ -86,6 +86,21 @@ in [`data/source-register.csv`](../data/source-register.csv).
 - Finding text now spaces out raw column identifiers, so
   `Differently_abled_persons_worked` reads as words.
 
+### Interface flow and clutter
+
+- Every page used to open with four stacked bands before any content: a
+  breadcrumb, a title, a permanent help banner, then the controls. Breadcrumbs
+  now appear only on the two detail pages, where they are the way back out.
+  The help banner is gone from the pages whose subtitle already said the same
+  thing, and on Your files it appears only while nothing has been uploaded.
+- The overview no longer repeats the severity and kind breakdown. That view
+  lives on Problems found, where the same bars also work as filters.
+- Problems found accepts a `?file=` scope, so a file's problem count is no
+  longer a dead end. The file detail page links into it, the scope shows as a
+  chip you can clear, and the breakdowns recalculate for that file.
+- Dropped the "How it works" nav item, which pointed at an anchor on a
+  different page. Every route got smaller as a result of the cleanup.
+
 ### Repository health
 
 - A YAML syntax error had made `.github/workflows/ci.yml` invalid since
@@ -96,61 +111,25 @@ in [`data/source-register.csv`](../data/source-register.csv).
   `docs/specification/` relative to the repository.
 - Two malformed rows in `data/source-register.csv` had a stray comma shifting
   every field after `resource_url` by one. Fixed.
+- Every push-triggered Vercel deploy had failed since `vercel.json` was added,
+  four in a row, each dying in about 3 seconds. The file described an app at
+  the repository root, so `npm ci` ran where no `package-lock.json` exists and
+  exited with EUSAGE before any build began. The live site had been serving a
+  two-day-old build, kept alive only by manual CLI deploys run from inside
+  `apps/web`. Both commands now target `apps/web` and push-triggered deploys
+  succeed again.
 
 ---
 
 ## What is left
 
-### 1. Redeploy the frontend, highest priority
-
-The live demo at https://web-tau-sandy-60.vercel.app is serving the build from
-2026-08-30. The landing hero, the charts, the file search and the contrast
-fixes are all on `main` but are **not** on the live site a judge would open.
-There is also a failed Vercel deployment in the history from 2026-08-31 that
-was not investigated.
-
-```bash
-cd apps/web && vercel --prod --yes
-```
-
-The project is already linked to the correct Vercel project (`web`), so this
-needs no prompts. Afterwards, confirm the hero is live by opening the URL and
-checking the headline reads "Find what doesn't add up in India's public data."
-
-The Railway backend is current and does not need redeploying. If it ever does:
-
-```bash
-railway service redeploy --service bharat-api --from-source --yes
-```
-
-### 2. Put the real findings on the live demo
-
-The SAS Nagar GER finding that the README leads with exists only in the local
-SQLite database. The deployed Railway instance still holds the synthetic seed
-corpus, so a judge clicking through will not see it.
-
-To fix, ingest the committed real samples against the production API rather
-than localhost, then run the analysis. Repeat per file:
-
-```bash
-curl -X POST "https://bharat-api-production.up.railway.app/artifacts/ingest?artifact_id=art-ger-primary-girls&source_id=SRC-GER-7632450-DATAGOVIN" \
-  -F "file=@data/real-samples/punjab-ger-schools-2019-2022/ger_primary_girls_punjab.csv"
-
-curl -X POST "https://bharat-api-production.up.railway.app/artifacts/art-ger-primary-girls/analyze"
-```
-
-The exact per-file artifact ids and source ids are in
-[`data/source-register.csv`](../data/source-register.csv), and
-[`data/real-samples/README.md`](../data/real-samples/README.md) has the local
-CLI equivalent.
-
-### 3. Record the prototype video
+### 1. Record the prototype video
 
 The full script, including the click path through the app, is in
-[`PROTOTYPE_VIDEO_SCRIPT.md`](PROTOTYPE_VIDEO_SCRIPT.md). Record it after step
-1 is done, so the recording shows the current interface.
+[`PROTOTYPE_VIDEO_SCRIPT.md`](PROTOTYPE_VIDEO_SCRIPT.md). The deployed site is
+current, so a recording made now shows the real interface.
 
-### 4. Known smaller items
+### 2. Known smaller items
 
 - The local API process on port 8000 is running an older build that predates
   the `/dashboard/summary` route. Restart it before local testing, or run on
@@ -182,7 +161,7 @@ cd apps/web && npm install && npm run dev
 Checks before any commit:
 
 ```bash
-uv run pytest                    # 152 tests
+uv run pytest                    # 155 tests
 uv run ruff check .
 cd apps/web && npx tsc --noEmit && npm run build
 ```
