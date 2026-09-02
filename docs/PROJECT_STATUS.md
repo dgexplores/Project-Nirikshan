@@ -106,9 +106,9 @@ in [`data/source-register.csv`](../data/source-register.csv).
 - A YAML syntax error had made `.github/workflows/ci.yml` invalid since
   2026-08-26, so every run since then reported failure with zero jobs actually
   executing. Fixed, all 4 jobs now pass.
-- Two document-generation scripts contained a hardcoded personal path that
-  revealed an earlier ChatGPT-assisted session. They now write into
-  `docs/specification/` relative to the repository.
+- Two document-generation scripts wrote to a hardcoded absolute path from one
+  machine, so they only ran there. They now write into `docs/specification/`
+  relative to the repository and work on any checkout.
 - Two malformed rows in `data/source-register.csv` had a stray comma shifting
   every field after `resource_url` by one. Fixed.
 - Every push-triggered Vercel deploy had failed since `vercel.json` was added,
