@@ -1,3 +1,13 @@
+# Backend blueprint for Render's free tier.
+#
+# Only the API and its database live here. The dashboard is served from
+# Vercel, so deploying a second copy of it would just create a competing
+# frontend and burn another free service slot. Point the Vercel project's
+# BACKEND_ORIGIN at this service's URL once it is live.
+#
+# Two free-tier limits worth knowing: a free web service sleeps after about
+# 15 minutes idle and takes roughly a minute to answer the next request, and
+# a free Postgres instance is removed after 30 days.
 services:
   - type: web
     name: bdd-api
@@ -7,27 +17,20 @@ services:
     plan: free
     healthCheckPath: /health
     envVars:
+      # Render hands out a postgres:// URL. Settings rewrites it to the
+      # psycopg dialect SQLAlchemy needs, so it can be used verbatim.
       - key: BDD_DATABASE_URL
         fromDatabase:
           name: bdd-db
           property: connectionString
       - key: BDD_RAW_STORE
         value: /data/raw
-      - key: LLM_PROVIDER
-        value: mock
-  - type: web
-    name: bdd-web
-    runtime: node
-    plan: free
-    rootDir: apps/web
-    buildCommand: npm ci && npm run build
-    startCommand: npm run start -- --port $PORT --hostname 0.0.0.0
-    envVars:
-      - key: BACKEND_ORIGIN
-        fromService:
-          name: bdd-api
-          type: web
-          property: host
+      - key: BDD_MANIFEST_DIR
+        value: /data/manifests
+      # The browser calls this API directly from the deployed dashboard, so
+      # that origin has to be allowed explicitly.
+      - key: BDD_CORS_ORIGINS
+        value: https://web-tau-sandy-60.vercel.app,http://localhost:3000
 databases:
   - name: bdd-db
     plan: free

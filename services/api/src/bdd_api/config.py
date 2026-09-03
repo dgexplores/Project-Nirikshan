@@ -7,6 +7,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 SUPPORTED_EXTENSIONS = {".csv", ".tsv", ".xlsx", ".json", ".jsonl", ".parquet"}
@@ -44,6 +45,23 @@ class Settings(BaseSettings):
     llm_timeout_s: float = 30.0
 
     job_workers: int = 2
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_database_url(cls, value: str) -> str:
+        """Accept the bare Postgres URLs that hosting platforms hand out.
+
+        Render, Heroku and Railway all inject a connection string shaped like
+        ``postgres://user:pass@host/db``. SQLAlchemy dropped the ``postgres``
+        alias, and without an explicit driver it reaches for psycopg2 rather
+        than the psycopg 3 this project installs, so both plain forms fail at
+        startup. Rewriting them here means a platform's own value can be used
+        as-is instead of being hand-edited into the right dialect.
+        """
+        for prefix in ("postgres://", "postgresql://"):
+            if value.startswith(prefix):
+                return "postgresql+psycopg://" + value[len(prefix):]
+        return value
 
     @property
     def cors_origin_list(self) -> list[str]:
