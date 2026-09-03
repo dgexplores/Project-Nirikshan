@@ -11,8 +11,8 @@
 | Layer | Link | What to test |
 |---|---|---|
 | **Frontend (Next.js)** | **https://web-tau-sandy-60.vercel.app** | Dashboard → Datasets (drag-drop) → Findings → Ask Detective |
-| **Backend API (FastAPI)** | **https://bharat-api-production.up.railway.app** | Health, seed, ask |
-| **API Docs (Swagger)** | **https://bharat-api-production.up.railway.app/docs** | Try all endpoints live |
+| **Backend API (FastAPI)** | **https://bdd-api.onrender.com** | Health, seed, ask |
+| **API Docs (Swagger)** | **https://bdd-api.onrender.com/docs** | Try all endpoints live |
 | **GitHub (Direct Use)** | **https://github.com/dgexplores/bharat-data-detective** | Clone and run locally, see below |
 
 ### Direct GitHub use
@@ -26,7 +26,7 @@ cd bharat-data-detective && docker compose -f infra/docker/compose.yml up --buil
 
 **Use in browser (no install):**
 - **Frontend:** https://web-tau-sandy-60.vercel.app
-- **Backend:** https://bharat-api-production.up.railway.app/docs
+- **Backend:** https://bdd-api.onrender.com/docs
 
 **Open in GitHub Codespaces (one click, free):**
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=dgexplores/bharat-data-detective)
@@ -36,13 +36,13 @@ cd bharat-data-detective && docker compose -f infra/docker/compose.yml up --buil
 
 **Quick test (copy-paste in terminal):**
 ```bash
-curl https://bharat-api-production.up.railway.app/health
+curl https://bdd-api.onrender.com/health
 # {"status":"ok","service":"bdd-api","version":"1.0.0"}
 
-curl -X POST https://bharat-api-production.up.railway.app/seed/demo -H 'Content-Length: 0'
+curl -X POST https://bdd-api.onrender.com/seed/demo -H 'Content-Length: 0'
 # seeds 6 demo datasets → 20 findings
 
-curl -X POST https://bharat-api-production.up.railway.app/ask \
+curl -X POST https://bdd-api.onrender.com/ask \
  -H 'Content-Type: application/json' \
  -d '{"question":"Bareilly beneficiaries lakh"}' | jq .answer
 # → cited answer with [E1] [E2]...
@@ -58,8 +58,8 @@ These are live, checkable facts, not marketing claims. Every figure below is eit
 |---|---|
 | Forensic engines | 5 (drift, anomaly, contradiction, false consensus, Benford) |
 | Real government datasets ingested | 3, from data.gov.in and nrega.nic.in |
-| Real findings from real data, live right now | 50 (34 anomaly, 16 Benford) |
-| Backend tests passing | 152, zero failures |
+| Real findings from real data, live right now | 49 (33 anomaly, 16 Benford), out of 69 total |
+| Backend tests passing | 157, zero failures |
 | Strongest real finding | SAS Nagar (Mohali) district's school enrollment ratio hits 145% of capacity by 2022, z-score 3.78 against its peers |
 | Languages Ask Detective answers in | Hindi and English, both cited |
 
@@ -119,7 +119,7 @@ BDD reads a dataset the way a careful analyst would, and it never pretends to kn
 | **Ask in Hindi/English** | `बरेली में कितने लाभार्थी?` → cited answer `[E1]` or honest refusal | `Ask Detective` or `bdd ask` |
 | **Work offline or with AI** | Deterministic cited answers always; add Sarvam/BharatGen key to get LLM hypotheses (still cited) | `POST /ask` |
 | **Script everything** | `bdd` CLI + API + blind benchmark runner (`bdd eval`) with explicit denominators | `bdd summary`, `bdd eval run` |
-| **Deploy free** | SQLite locally or Postgres on Railway free tier, frontend on Vercel free | `docker compose up` |
+| **Deploy free** | SQLite locally, or Postgres on Render's free tier with the frontend on Vercel free | `docker compose up` |
 
 **Live proof:** click "Load demo case" on the deployed frontend and it seeds 6 clearly-labelled synthetic datasets (micro-irrigation unit drift, a planted district spike, two conflicting PM-KISAN-style totals, and a fabricated-looking payments file) → 20 findings, one of each engine, in under a second. Open https://web-tau-sandy-60.vercel.app and click `Findings`.
 
