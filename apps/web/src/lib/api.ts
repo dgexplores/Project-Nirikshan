@@ -20,19 +20,49 @@ export class ApiError extends Error {
   }
 }
 
+/** The API host itself is not answering, as opposed to the API answering with
+ *  an error of its own. ErrorState matches on this exact string to show the
+ *  offline notice, so the two files share it rather than sniffing text. */
+export const BACKEND_DOWN = "The API host is not responding.";
+
+/** True when the failure came from the platform rather than the application.
+ *
+ *  This API always answers with its own envelope, `{error: {code, message}}`,
+ *  and FastAPI's own 404 for an unknown route carries `detail`. A body with
+ *  neither did not come from this service at all, so a 404 shaped like that
+ *  means the host has no application to route to. The gateway range means the
+ *  platform could not reach the container either way. */
+function isHostFailure(status: number, body: unknown): boolean {
+  if (status === 502 || status === 503 || status === 504) return true;
+  if (status !== 404) return false;
+  const data = (body ?? {}) as { error?: unknown; detail?: unknown };
+  return data.error === undefined && data.detail === undefined;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, init);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, init);
+  } catch {
+    // No response at all: offline, DNS failure, or nothing listening.
+    throw new ApiError("backend_unreachable", BACKEND_DOWN);
+  }
   if (!res.ok) {
     let code = String(res.status);
     let message = res.statusText || "request failed";
+    let body: unknown = null;
     try {
-      const data = (await res.json()) as { error?: { code?: string; message?: string } };
+      body = await res.json();
+      const data = body as { error?: { code?: string; message?: string } };
       if (data?.error?.message) {
         message = data.error.message;
         if (data.error.code) code = data.error.code;
       }
     } catch {
-      // keep defaults
+      // A non-JSON body is itself a sign the response came from the host.
+    }
+    if (isHostFailure(res.status, body)) {
+      throw new ApiError("backend_unreachable", BACKEND_DOWN);
     }
     throw new ApiError(code, message);
   }
