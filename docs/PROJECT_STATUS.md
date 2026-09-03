@@ -1,6 +1,6 @@
 # Project status and handoff
 
-Last updated: 2026-09-02, at commit `dde0eb6` on `main`.
+Last updated: 2026-09-03, at commit `baccbd0` on `main`.
 
 This is the working record of what is finished, what is not, and the exact
 commands to pick each remaining item back up. The README is the pitch. This
@@ -14,11 +14,11 @@ file is the checklist.
 |---|---|
 | Code on `main` | Committed and pushed, working tree clean |
 | GitHub Actions CI | Passing, all 4 jobs |
-| Backend tests | 155 passing |
+| Backend tests | 157 passing |
 | Web production build | Clean, no new dependencies added |
-| Backend deploy (Railway) | Live and current |
-| Frontend deploy (Vercel) | Live and current. Push-triggered deploys work again |
-| Real data.gov.in findings | Live on the deployed demo, 11 real artifacts of 18 |
+| Backend deploy | **Down.** The Railway trial expired and the service was stopped. Needs moving to Render, see below |
+| Frontend deploy (Vercel) | Live and current, but every API call fails while the backend is down |
+| Real data.gov.in findings | Committed in the repo. Not reachable on the demo while the backend is down, and will need re-ingesting into the new database |
 | Prototype video | Script written, not recorded |
 
 ---
@@ -123,13 +123,67 @@ in [`data/source-register.csv`](../data/source-register.csv).
 
 ## What is left
 
-### 1. Record the prototype video
+### 1. Put the backend back up, on Render
+
+Railway answers `404 Application not found`. Its logs show the service built,
+started and served a request, then received `Stopping Container`, so nothing
+crashed. The Railway CLI states the cause plainly: "Your trial has expired.
+Please select a plan to continue using Railway." A redeploy is refused for the
+same reason, so this cannot be fixed on Railway without paying.
+
+`render.yaml` is the free-tier replacement and now actually works. Two faults
+that would have broken the move are fixed in commit `baccbd0`: Render hands
+out a `postgres://` connection string that SQLAlchemy no longer accepts, and
+the blueprint wired `BACKEND_ORIGIN` from a bare hostname with no scheme. It
+also no longer deploys a second copy of the dashboard, since Vercel serves it.
+
+Deploying needs a browser, because Render has to be authorised against this
+private repository:
+
+1. Go to https://dashboard.render.com/blueprints and choose New Blueprint
+   Instance.
+2. Connect the `dgexplores/bharat-data-detective` repository. Render will
+   need permission to read a private repo.
+3. Render reads `render.yaml` and offers `bdd-api` plus a free `bdd-db`.
+   Apply it. The first Docker build takes several minutes.
+4. Copy the service URL it gives you, of the form
+   `https://bdd-api-XXXX.onrender.com`, and check it answers:
+
+```bash
+curl https://bdd-api-XXXX.onrender.com/health
+```
+
+5. Point the dashboard at it and redeploy the frontend:
+
+```bash
+cd apps/web
+vercel env add BACKEND_ORIGIN production   # paste the Render URL
+vercel --prod --yes
+```
+
+6. Seed the demo corpus, then re-ingest the real files, since the new
+   database starts empty:
+
+```bash
+curl -X POST https://bdd-api-XXXX.onrender.com/seed/demo -H 'Content-Length: 0'
+```
+
+   The real datasets and their exact artifact and source ids are in
+   [`data/real-samples/README.md`](../data/real-samples/README.md) and
+   [`data/source-register.csv`](../data/source-register.csv).
+
+Two free-tier limits to plan around: a free web service sleeps after about 15
+minutes idle and takes roughly a minute to answer the next request, so warm it
+up before a demo or a recording, and a free Postgres instance is removed after
+30 days.
+
+### 2. Record the prototype video
 
 The full script, including the click path through the app, is in
 [`PROTOTYPE_VIDEO_SCRIPT.md`](PROTOTYPE_VIDEO_SCRIPT.md). The deployed site is
 current, so a recording made now shows the real interface.
 
-### 2. Known smaller items
+### 3. Known smaller items
 
 - The local API process on port 8000 is running an older build that predates
   the `/dashboard/summary` route. Restart it before local testing, or run on
@@ -161,7 +215,7 @@ cd apps/web && npm install && npm run dev
 Checks before any commit:
 
 ```bash
-uv run pytest                    # 155 tests
+uv run pytest                    # 157 tests
 uv run ruff check .
 cd apps/web && npx tsc --noEmit && npm run build
 ```
