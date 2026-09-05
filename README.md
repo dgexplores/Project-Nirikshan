@@ -2,37 +2,19 @@
 
 **AI forensic and evidence-trust layer for Indian public data.** Flags inconsistencies for human review, never declares anyone "wrong".
 
-> Built for **UNLEASH LLM, Responsible AI, Rooted in India** (India-First Dataset Track via AIKosh)
+> Built for **UNLEASH LLM, Responsible AI, Rooted in India** (India-First Dataset Track via AIKosh) · Made by **Vaibhava** and **Deepak Gangwar**
 
 ---
 
-## Live demo
+## For judges — start here (5 minutes, no install)
 
-| Layer | Link | What to test |
+| Open this | Link | Do this |
 |---|---|---|
-| **Frontend (Next.js)** | **https://web-tau-sandy-60.vercel.app** | Dashboard → Datasets (drag-drop) → Findings → Ask Detective |
-| **Backend API (FastAPI)** | **https://bdd-api.onrender.com** | Health, seed, ask |
-| **API Docs (Swagger)** | **https://bdd-api.onrender.com/docs** | Try all endpoints live |
-| **GitHub (Direct Use)** | **https://github.com/dgexplores/bharat-data-detective** | Clone and run locally, see below |
+| **Live app** | **https://web-tau-sandy-60.vercel.app** | ① Dashboard → ② open a problem → ③ exact rows → ④ pinpoint on graph |
+| **API docs (try it live)** | **https://bdd-api.onrender.com/docs** | Expand `POST /compare`, hit Try it out |
+| **Sample files to upload** | [Try-it table](#try-it-yourself-with-real-files) | Download a CSV, drag onto Datasets page |
 
-### Direct GitHub use
-
-**Clone & run locally (2 commands):**
-```bash
-git clone https://github.com/dgexplores/bharat-data-detective.git
-cd bharat-data-detective && docker compose -f infra/docker/compose.yml up --build
-# → Frontend: http://localhost:3000  Backend: http://localhost:8000/docs
-```
-
-**Use in browser (no install):**
-- **Frontend:** https://web-tau-sandy-60.vercel.app
-- **Backend:** https://bdd-api.onrender.com/docs
-
-**Open in GitHub Codespaces (one click, free):**
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=dgexplores/bharat-data-detective)
-
-**Deploy your own free copy:**
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dgexplores/bharat-data-detective&project-name=bharat-data-detective&root-directory=apps/web) [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/dgexplores/bharat-data-detective)
+> First click can take ~60 seconds (free server wakes from sleep). Everything below is live and checkable: 18 files, 106 problems, 85 from real data.gov.in datasets.
 
 **Quick test (copy-paste in terminal):**
 ```bash
@@ -47,6 +29,16 @@ curl -X POST https://bdd-api.onrender.com/ask \
  -d '{"question":"Bareilly beneficiaries lakh"}' | jq .answer
 # → cited answer with [E1] [E2]...
 ```
+
+### Run it yourself
+
+```bash
+git clone https://github.com/dgexplores/bharat-data-detective.git
+cd bharat-data-detective && docker compose -f infra/docker/compose.yml up --build
+# → Frontend: http://localhost:3000  Backend: http://localhost:8000/docs
+```
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=dgexplores/bharat-data-detective) [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dgexplores/bharat-data-detective&project-name=bharat-data-detective&root-directory=apps/web) [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/dgexplores/bharat-data-detective)
 
 ---
 
@@ -70,6 +62,12 @@ These are live, checkable facts, not marketing claims. Every figure below is eit
 Government portals in India publish enormous amounts of data on farmers, crops, schools, pensions. Nobody has time to check it by hand, so most of it goes unchecked. The same scheme sometimes shows different totals on two different pages. A unit quietly switches from lakh to crore between one year's release and the next. Ten articles repeat one number, and it looks like ten confirmations when it's really one source copied nine times.
 
 BDD reads a dataset the way a careful analyst would, and it never pretends to know more than the data supports.
+
+```mermaid
+flowchart LR
+    P["Problem: unchecked public data<br/>lakh vs crore, copied totals,<br/>outliers nobody reviews"] --> BDD["Bharat Data Detective<br/>freeze → check → 5 engines"]
+    BDD --> OUT["Outcome: each flag with proof<br/>exact rows, source file, graph<br/>human decides"]
+```
 
 1. You upload any CSV or Excel file, or point it at a real dataset from data.gov.in / AIKosh.
 2. It freezes the file with a SHA-256 hash so it can never be silently changed later, checks its quality, and works out what each column actually means (in Hindi and English: lakh/लाख, crore/करोड़, FY 2024-25).
@@ -123,7 +121,9 @@ BDD reads a dataset the way a careful analyst would, and it never pretends to kn
 
 **Live proof:** click "Load demo case" on the deployed frontend and it seeds 6 clearly-labelled synthetic datasets (micro-irrigation unit drift, a planted district spike, two conflicting PM-KISAN-style totals, and a fabricated-looking payments file) → 20 findings, one of each engine, in under a second. Open https://web-tau-sandy-60.vercel.app and click `Findings`.
 
-**Try it yourself with real files (download, then drag onto the Datasets page):**
+### Try it yourself with real files
+
+Download, then drag onto the Datasets page:
 
 | File | What you will see | Download |
 |---|---|---|
@@ -446,6 +446,10 @@ For the current build state, what is deployed versus what is only on `main`, and
 > Rule that governs all of the above: no accuracy claims until the blinded CAG benchmark produces measured numbers.
 
 ---
+
+## Team
+
+Built by **Vaibhava** and **Deepak Gangwar** for UNLEASH LLM (India-First Dataset Track via AIKosh).
 
 ## License
 
