@@ -110,9 +110,13 @@ export default function ComparePage() {
   const colsA = useMemo(() => numericColumns(profileA), [profileA]);
   const colsB = useMemo(() => numericColumns(profileB), [profileB]);
 
+  // Autofill heals stale picks too: if the chosen column is not in the
+  // current file's list (e.g. right after switching files, while the new
+  // profile was still loading), fall back to that file's first column
+  // instead of sending a column the file doesn't have.
   useEffect(() => {
-    if (!colA && colsA.length) setColA(colsA[0]);
-    if (!colB && colsB.length) setColB(colsB[0]);
+    if (colsA.length && !colsA.includes(colA)) setColA(colsA[0]);
+    if (colsB.length && !colsB.includes(colB)) setColB(colsB[0]);
   }, [colsA, colsB, colA, colB]);
 
   async function run() {
