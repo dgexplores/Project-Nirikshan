@@ -1,6 +1,6 @@
 # Project status and handoff
 
-Last updated: 2026-09-03, at commit `d297410` on `main`.
+Last updated: 2026-09-05, at commit `711c306` on `main`.
 
 This is the working record of what is finished, what is not, and the exact
 commands to pick each remaining item back up. The README is the pitch. This
@@ -14,11 +14,11 @@ file is the checklist.
 |---|---|
 | Code on `main` | Committed and pushed, working tree clean |
 | GitHub Actions CI | Passing, all 4 jobs |
-| Backend tests | 157 passing |
+| Backend tests | 168 passing |
 | Web production build | Clean, no new dependencies added |
 | Backend deploy | Live on Render at https://bdd-api.onrender.com, free plan, Singapore |
 | Frontend deploy (Vercel) | Live and current, pointed at the Render backend |
-| Real data.gov.in findings | Live on the demo. 16 artifacts, 69 findings, 49 of them from the real datasets |
+| Real data.gov.in findings | Live on the demo. 16 artifacts, 87 findings, 67 of them from the real datasets |
 | Prototype video | Script written, not recorded |
 
 ---
@@ -173,7 +173,7 @@ cd apps/web && npm install && npm run dev
 Checks before any commit:
 
 ```bash
-uv run pytest                    # 157 tests
+uv run pytest                    # 168 tests
 uv run ruff check .
 cd apps/web && npx tsc --noEmit && npm run build
 ```

@@ -58,8 +58,8 @@ These are live, checkable facts, not marketing claims. Every figure below is eit
 |---|---|
 | Forensic engines | 5 (drift, anomaly, contradiction, false consensus, Benford) |
 | Real government datasets ingested | 3, from data.gov.in and nrega.nic.in |
-| Real findings from real data, live right now | 49 (33 anomaly, 16 Benford), out of 69 total |
-| Backend tests passing | 157, zero failures |
+| Real findings from real data, live right now | 67 (51 anomaly, 16 Benford), out of 87 total |
+| Backend tests passing | 168, zero failures |
 | Strongest real finding | SAS Nagar (Mohali) district's school enrollment ratio hits 145% of capacity by 2022, z-score 3.78 against its peers |
 | Languages Ask Detective answers in | Hindi and English, both cited |
 
@@ -229,7 +229,7 @@ No paid APIs needed (`LLM_PROVIDER=mock` deterministic, TF-IDF fallback if Qdran
 ### Verify
 
 ```bash
-uv run pytest        # 155 tests incl. API lifecycle, engines, CLI, leakage guard
+uv run pytest        # 168 tests incl. API lifecycle, engines, CLI, leakage guard
 uv run ruff check .  # lint
 cd apps/web && npm run build  # typecheck + production build
 ```
@@ -402,7 +402,7 @@ For the current build state, what is deployed versus what is only on `main`, and
 
 ### Achieved quality gates
 
-- 155 passing tests: API lifecycle, engine math vectors, CLI commands, seed idempotency (reruns write zero duplicates), Ask-Detective safety gate, blind-run label-exclusion guard, benchmark-leakage guard
+- 168 passing tests: API lifecycle, engine math vectors, CLI commands, seed idempotency (reruns write zero duplicates), Ask-Detective safety gate, blind-run label-exclusion guard, benchmark-leakage guard
 - Governance: the API layer has zero import path to the restricted registry (structurally verified); every label read is access-logged
 - `ruff` clean; Next.js production build clean; both Docker images build in CI
 - End-to-end verified: seed → dashboard → compare → ask → lineage on a fresh database (including live free-tier deploy)
