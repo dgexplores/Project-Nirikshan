@@ -82,6 +82,21 @@ _HINDI_ALIASES: dict[str, str] = {
     "तुलना": "compare",
     "असामान्य": "unusual",
     "गड़बड़ी": "anomaly",
+    "किसान": "farmer",
+    "फसल": "crop",
+    "स्कूल": "school",
+    "विद्यालय": "school",
+    "नामांकन": "enrollment",
+    "पानी": "water",
+    "सिंचाई": "irrigation",
+    "योजना": "scheme",
+    "रिपोर्ट": "report",
+    "खोज": "finding",
+    "खोजें": "finding",
+    "विसंगति": "anomaly",
+    "बकाया": "dues",
+    "सब्सिडी": "subsidy",
+    "अनुदान": "subsidy",
 }
 
 

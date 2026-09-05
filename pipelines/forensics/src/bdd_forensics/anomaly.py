@@ -155,6 +155,63 @@ def detect_yoy(
     return findings
 
 
+def detect_rolling_baseline(
+    *,
+    metric: str, values: list[float | None], window: int = 3,
+    threshold: float = ZSCORE_THRESHOLD,
+) -> list[AnomalyFinding]:
+    """Flag points deviating from a trailing rolling-median baseline.
+
+    Unlike z-score (flat cohort mean), the baseline here is the median of the
+    previous ``window`` points, so slow seasonal drift does not inflate every
+    peak into a finding. Dispersion is the median absolute deviation of that
+    same window. Pure helper for Tier-1 seasonal work; not yet wired into
+    ``run_anomalies`` so existing finding counts stay unchanged.
+    """
+    findings: list[AnomalyFinding] = []
+    window = max(1, int(window))
+    for idx, value in enumerate(values):
+        if value is None:
+            continue
+        prior = [v for v in values[max(0, idx - window):idx] if v is not None]
+        if len(prior) < window:
+            continue
+        ordered = sorted(prior)
+        mid = len(ordered) // 2
+        median = ordered[mid] if len(ordered) % 2 else (ordered[mid - 1] + ordered[mid]) / 2
+        deviations = sorted(abs(v - median) for v in prior)
+        dmid = len(deviations) // 2
+        mad = deviations[dmid] if len(deviations) % 2 else (deviations[dmid - 1] + deviations[dmid]) / 2
+        if mad == 0:
+            if value == median:
+                continue
+            score: float | None = None
+            severity = "medium"
+        else:
+            z = (value - median) / (1.4826 * mad)
+            if abs(z) <= threshold:
+                continue
+            score = round(float(z), 2)
+            severity = _severity(abs(z))
+        findings.append(
+            AnomalyFinding(
+                finding_id=f"an-{len(findings):03d}",
+                metric=metric,
+                slice={"index": str(idx)},
+                observed=float(value),
+                expected=_round(median),
+                baseline=_round(median),
+                method="rolling_baseline",
+                score=score,
+                severity=severity,
+                confidence="moderate",
+                evidence_query=_evq("rolling_baseline", metric, f"index={idx}"),
+                caveats=["value deviates from trailing rolling-median baseline"],
+            )
+        )
+    return findings
+
+
 def _yoy_frame(g: pl.DataFrame, value_col: str, period_col: str) -> pl.DataFrame:
     g = g.sort(period_col)
     prev = pl.col(value_col).shift(1)
@@ -198,4 +255,4 @@ def _evq(method: str, value_col: str, key: str, bounds: str | None = None) -> st
     return f"{base} slice={key}" + (f" bounds={bounds}" if bounds else "")
 
 
-__all__ = ["detect_iqr", "detect_yoy", "detect_zscore"]
+__all__ = ["detect_iqr", "detect_rolling_baseline", "detect_yoy", "detect_zscore"]
