@@ -158,18 +158,18 @@ All of the above is already ingested and live on the deployed demo, not just loc
 
 **These are real limitations today, the roadmap below tracks how we fix them:**
 
-| Gap | Why it matters | How to make it better | Track |
-|---|---|---|---|
-| **No seasonal baseline** | Flat mean flags normal seasonal spikes as anomalies | Rolling median / STL residual | Tier 1 remainder |
-| **No PDF/document drift** | Only tables checked, not scheme PDFs/policy text | PDF ingestion + Qdrant embeddings | Tier 2 |
-| **No deep RAG agent** | Retrieval is TF-IDF, not vector search; no LangGraph flow | Qdrant + embeddings + `scope_guard → retrieve → cited_memo → safety_check` | Tier 2 |
-| **Hindi is a keyword bridge, not full NLU** | Devanagari questions retrieve evidence via a curated Hindi-to-English domain-word map, not machine translation, so wording outside that map won't match | Live Bhashini/Sarvam Translate API | Tier 2 |
-| **No login / roles** | Anyone can review; no reviewer vs admin | JWT auth + RBAC | Tier 3 |
-| **Jobs die on restart** | Thread-pool jobs, no retry | Arq/Celery + Redis | Tier 3 |
-| **No cloud storage** | Raw files on local disk | S3/MinIO + presigned uploads | Tier 3 |
-| **No DB migrations** | `create_all` on startup | Alembic versioned migrations | Tier 3 |
-| **No auto-monitor** | Must re-upload when portal updates | Cron re-fetch + alert on silent revisions | Tier 4 |
-| **No PDF case export** | Can't share case file externally | One-click PDF (findings + lineage + sign-off) | Tier 4 |
+| Gap | Why it matters | How we will fix it |
+|---|---|---|
+| **No seasonal baseline** | Normal seasonal spikes get flagged as anomalies | Smarter trend-aware baselines |
+| **No PDF checks** | Only tables checked, not scheme PDFs/policy text | Read PDFs as well as tables |
+| **Basic search** | Question matching is keyword-based, not semantic | Meaning-based search over evidence |
+| **Hindi is basic** | Only common Hindi words map to English; free phrasing may miss | Full Hindi understanding via Bhashini/Sarvam |
+| **No login / roles** | Anyone can review (an optional shared API key exists, no user accounts) | Accounts with reviewer/admin roles |
+| **Jobs die on restart** | Interrupted jobs are marked failed with a retry note, but must be resubmitted by hand | A job queue that survives restarts with retries |
+| **No cloud storage** | Raw files live on the server disk | Cloud object storage |
+| **No DB migrations** | Tables are created fresh, not versioned | Versioned database upgrades |
+| **No auto-monitor** | Must re-upload when a portal updates numbers | Scheduled re-checks with alerts |
+| **No PDF case export** | Can't share a case file externally yet | One-click PDF export |
 
 > **No fake accuracy:** we report no precision/recall until the blind CAG benchmark is run via `bdd eval`. Transparency over hype, see `docs/benchmark-protocol.md`.
 
@@ -390,60 +390,21 @@ For the current build state, what is deployed versus what is only on `main`, and
 
 ## Roadmap
 
-### Done (v1.0)
+### Done
 
-- [x] Immutable ingestion: SHA-256 freeze store, parser-version pinning, manifests
-- [x] Column profiler: nulls/distributions/candidate keys/duplicates + PII hints (Aadhaar, PAN, mobile…)
-- [x] Data fitness score (A–F) with weighted component breakdown
-- [x] Semantic engines: unit/fiscal-year normalization, definition cards, drift detection (definition/unit/denominator/scope) scored by semantic impact
-- [x] Comparability gates (geography/temporal/unit/definition) before any reconciliation
-- [x] Cross-source contradiction engine (`conflict` / `explainable` / `not_comparable`)
-- [x] False-consensus detection via evidence-diversity ratio
-- [x] **Benford's law digit screening** - Nigrini MAD conformity bands, applicability guards (value count, magnitude span); live demo fixture
-- [x] **Fuzzy entity resolution** - RapidFuzz normalization of place-name variants ("Adabari T.E." ~ "Adabari"); fuzzy geography gate powers cross-source compare
-- [x] Evidence lineage graph per artifact (raw → parser → profile → rule → finding)
-- [x] Persistence: SQLAlchemy dual-mode (SQLite default / Postgres), idempotent hash-keyed findings
-- [x] Background jobs with persisted step-level progress; anomaly queue capped at strongest 12 signals per artifact
-- [x] Web dashboard: ingest w/ live job steps, profiler views, findings queue + reviewer decisions, compare workbench, lineage visualization, Benford observed-vs-expected digit bars
-- [x] Ask Detective: deterministic cited synthesis; optional LLM with hard safety gate
-- [x] **`bdd` CLI**: init/serve/seed/ingest/artifacts/show/findings/review/ compare/ask/summary, every list command `--json`-scriptable
-- [x] Synthetic demo corpus (one-click seed: drift + anomaly + conflict + consensus + Benford demos) and CI incl. docker builds and benchmark-leakage guard
+- Immutable file freeze (SHA-256), quality profiler with PII hints, A–F fitness score
+- Five forensic engines: anomaly, definition drift, cross-source contradiction, false consensus, Benford digit screening
+- Comparability gates (place, time, unit, meaning) before any comparison; fuzzy place-name matching
+- Evidence lineage graph, reviewer decisions, Hindi/English cited Q&A with safety gates, scriptable `bdd` CLI, blind benchmark runner
+- 168 tests green, lint + production build clean, Docker images built on every change
 
-### Achieved quality gates
+### Next
 
-- 168 passing tests: API lifecycle, engine math vectors, CLI commands, seed idempotency (reruns write zero duplicates), Ask-Detective safety gate, blind-run label-exclusion guard, benchmark-leakage guard
-- Governance: the API layer has zero import path to the restricted registry (structurally verified); every label read is access-logged
-- `ruff` clean; Next.js production build clean; both Docker images build in CI
-- End-to-end verified: seed → dashboard → compare → ask → lineage on a fresh database (including live free-tier deploy)
+- Seasonal baselines (fewer false alarms on cyclical data), full Hindi understanding, PDF/policy-document checks
+- Logins with reviewer roles, jobs that survive restarts, cloud file storage
+- Scheduled monitors that catch portals silently revising numbers, one-click PDF case export
 
-### In progress: Tier 1 remainder
-
-- [ ] **Seasonal/trend-aware anomaly baseline** expected value from rolling median or STL residual instead of flat mean, cutting false positives on cyclical data
-
-### Next: Tier 2, real RAG and agent (spec Sprint 4)
-
-- [ ] Qdrant + embeddings over chunked dataset content and scheme documents (compose already ships Qdrant)
-- [ ] PDF/document ingestion so drift checks cover policy text, not just tables
-- [ ] LangGraph investigation flow per spec §15: scope_guard → retrieve_evidence → assess_sufficiency → refuse_or_plan → deterministic_tools → cited_memo → claim_safety_check
-- [x] Hindi question retrieval bridge (Devanagari tokenizer + curated domain-word map, bilingual refusal text), full Hindi/Hinglish NLU via Bhashini/Sarvam still open
-
-### Next: Tier 3, production hardening
-
-- [ ] JWT auth + RBAC (reviewer/admin roles for the human-review gate)
-- [ ] Durable job queue (Arq/Celery + Redis) surviving restarts, with retries
-- [ ] S3/MinIO object store for raw artifacts + presigned uploads
-- [ ] Alembic versioned migrations replacing create_all
-- [ ] OpenTelemetry traces + Prometheus metrics (spec NFR)
-- [ ] DuckDB query engine for 10 GB+ files
-
-### Later: Tier 4, product moat
-
-- [ ] Scheduled source monitors: re-fetch registered URLs on a cron, alert when a portal silently revises published numbers
-- [ ] One-click case-file export (PDF: findings + lineage + reviewer sign-off)
-- [x] **Blind benchmark runner** (`bdd eval run|adjudicate|report`) - label-blind investigation pass, logged label reveal at adjudication, append-only ledger, metrics with explicit denominators (detectability rate null until cases are adjudicated; precision/recall still require pre-registered matching)
-- [ ] Public API keys for embedding BDD checks into other pipelines
-
-> Rule that governs all of the above: no accuracy claims until the blinded CAG benchmark produces measured numbers.
+> No accuracy claims until the blinded CAG benchmark produces measured numbers.
 
 ---
 
