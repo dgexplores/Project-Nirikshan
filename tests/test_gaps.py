@@ -78,6 +78,47 @@ def test_seed_repairs_missing_raw(api: TestClient) -> None:
         assert row is not None and os.path.exists(row.raw_uri)
 
 
+def test_evidence_returns_exact_rows_for_anomaly(api: TestClient) -> None:
+    from conftest import wait_job
+
+    csv = "district,value\nA,1\nB,2\nC,3\nD,4\nE,5000\nF,6\nG,7\nH,8\n"
+    accepted = api.post(
+        "/artifacts/ingest",
+        params={"artifact_id": "art_evid", "source_id": "SRC-TEST"},
+        files={"file": ("d.csv", io.BytesIO(csv.encode()), "text/csv")},
+    ).json()
+    wait_job(api, accepted["job_id"])
+    assert api.post("/artifacts/art_evid/analyze").status_code == 200
+
+    items = api.get("/findings", params={"kind": "anomaly"}).json()["items"]
+    ours = [f for f in items if "art_evid" in f["artifact_ids"]]
+    assert ours
+    body = api.get(f"/findings/{ours[0]['id']}/evidence").json()
+    assert body["artifact_id"] == "art_evid"
+    assert body["matched"] >= 1
+    assert all("_row" in r for r in body["rows"])
+    assert "5000" in body["rows"][0].values() or any("5000" in str(v) for r in body["rows"] for v in r.values())
+
+
+def test_evidence_handles_aggregate_kinds_and_missing(api: TestClient) -> None:
+    from conftest import wait_job
+
+    assert api.get("/findings/nope/evidence").status_code == 404
+    for aid, col in (("ev_a", "total_inr"), ("ev_b", "total_inr")):
+        accepted = api.post(
+            "/artifacts/ingest",
+            params={"artifact_id": aid, "source_id": "SRC-TEST"},
+            files={"file": ("d.csv", io.BytesIO(b"district,total_inr\nA,100\nB,200\n"), "text/csv")},
+        ).json()
+        wait_job(api, accepted["job_id"])
+    api.post("/compare", json={"artifact_a": "ev_a", "column_a": "total_inr", "artifact_b": "ev_b", "column_b": "total_inr"})
+    items = api.get("/findings", params={"kind": "contradiction"}).json()["items"]
+    assert items
+    body = api.get(f"/findings/{items[0]['id']}/evidence").json()
+    assert body["rows"] == [] and body["matched"] == 0
+    assert body["note"]
+
+
 def test_stale_jobs_recovered_as_failed(api: TestClient) -> None:
     from bdd_api.jobs import create_job, get_job, recover_stale_jobs
 

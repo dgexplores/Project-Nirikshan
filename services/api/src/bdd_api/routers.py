@@ -23,6 +23,7 @@ from bdd_api.errors import AppError, ConflictError, NotFoundError
 from bdd_api.jobs import StepReporter, create_job, get_job, submit_job
 from bdd_api.pipelines import (
     INGEST_STEPS,
+    finding_evidence,
     run_anomalies,
     run_compare,
     run_ingest,
@@ -424,6 +425,12 @@ def analyze_artifact(artifact_id: str) -> dict:
     """Re-run anomaly engines over a stored artifact (deterministic, idempotent)."""
     written = run_anomalies(artifact_id)
     return {"artifact_id": artifact_id, "findings_written": written}
+
+
+@router.get("/findings/{finding_id}/evidence")
+def get_finding_evidence(finding_id: str, limit: int = Query(default=25, le=100)) -> dict:
+    """Exact stored rows behind a finding: file row numbers + values."""
+    return finding_evidence(finding_id, limit)
 
 
 # ---------- ask detective ----------

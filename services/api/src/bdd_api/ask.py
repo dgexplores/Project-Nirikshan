@@ -59,6 +59,8 @@ class EvidenceCard:
     artifact_id: str
     locator: str
     snippet: str
+    kind: str = "artifact"
+    severity: str | None = None
 
 
 # A small, curated Hindi-to-English keyword bridge for retrieval. This is
@@ -119,10 +121,11 @@ def _collect_evidence(question: str, artifact_ids: list[str] | None) -> tuple[li
     q_tokens = set(_tokens(question))
     cards: list[tuple[float, EvidenceCard]] = []
 
-    def add(score: float, artifact_id: str, locator: str, snippet: str) -> None:
+    def add(score: float, artifact_id: str, locator: str, snippet: str,
+            kind: str = "artifact", severity: str | None = None) -> None:
         if score <= 0:
             return
-        cards.append((score, EvidenceCard(ref="", artifact_id=artifact_id, locator=locator, snippet=snippet[:280])))
+        cards.append((score, EvidenceCard(ref="", artifact_id=artifact_id, locator=locator, snippet=snippet[:280], kind=kind, severity=severity)))
 
     with db_session() as session:
         art_query = select(ArtifactRow).order_by(ArtifactRow.created_at.desc())  # type: ignore[attr-defined]
@@ -152,8 +155,10 @@ def _collect_evidence(question: str, artifact_ids: list[str] | None) -> tuple[li
             if artifact_ids and not set(artifact_ids) & set(map(str, frow.artifact_ids or [])):
                 continue
             text_blob = f"{frow.title} {frow.summary} {frow.kind}"
-            score = sum(2.5 for t in q_tokens if t in text_blob.lower())
-            add(score, (frow.artifact_ids or ["-"])[0], f"finding:{frow.finding_id}", f"{frow.title} - {frow.summary}")
+            score = sum(3.0 for t in q_tokens if t in text_blob.lower())
+            if score > 0 and frow.severity in ("high", "critical"):
+                score += 0.5
+            add(score, (frow.artifact_ids or ["-"])[0], f"finding:{frow.finding_id}", f"{frow.title} - {frow.summary}", kind=frow.kind, severity=frow.severity)
 
     cards.sort(key=lambda pair: pair[0], reverse=True)
     top = [c for _, c in cards[:6]]
@@ -222,16 +227,53 @@ def _llm_answer(question: str, evidence: list[EvidenceCard]) -> str | None:
         return None
 
 
+_KIND_PLAIN: dict[str, str] = {
+    "anomaly": "unusual number",
+    "drift": "changed definition",
+    "contradiction": "sources disagree",
+    "consensus": "copies of one source",
+    "benford": "unusual digit pattern",
+}
+
+_HINDI_LEAD = "आपके प्रश्न से जुड़े सबूत मिले हैं, विवरण नीचे अंग्रेज़ी में है:"
+
+
+def _is_hindi(text: str) -> bool:
+    return bool(re.search(r"[ऀ-ॿ]", text))
+
+
 def _deterministic_answer(question: str, evidence: list[EvidenceCard], titles: dict[str, str]) -> str:
-    lines = [f"Based on {len(evidence)} stored evidence item(s) relevant to \"{question}\":"]
-    by_artifact: dict[str, list[EvidenceCard]] = {}
-    for c in evidence:
-        by_artifact.setdefault(c.artifact_id, []).append(c)
-    for artifact_id, ecs in by_artifact.items():
-        label = titles.get(artifact_id, artifact_id)
-        lines.append(f"\n• {label}:")
-        for c in ecs:
-            lines.append(f"  [{c.ref}] {c.snippet}")
+    """Direct answer first, grouped evidence after.
+
+    Problems flagged lead (that is what the user asked about), files and
+    columns follow as context. Every card keeps its [E#] citation.
+    """
+    problems = [c for c in evidence if c.locator.startswith("finding:")]
+    context = [c for c in evidence if not c.locator.startswith("finding:")]
+    kinds = sorted({_KIND_PLAIN.get(c.kind, c.kind) for c in problems})
+
+    lines = []
+    if _is_hindi(question):
+        lines.append(_HINDI_LEAD)
+    direct = f"Yes - {len(problems)} flagged problem(s)"
+    if kinds:
+        direct += f" ({', '.join(kinds)})"
+    direct += f' across {len({c.artifact_id for c in evidence})} file(s) relevant to "{question}".'
+    if not problems:
+        direct = f'No flagged problems match "{question}", but {len(context)} file/column description(s) do:'
+    lines.append(direct)
+
+    if problems:
+        lines.append("\nProblems flagged (open each in the Findings queue to review):")
+        for c in problems:
+            label = titles.get(c.artifact_id, c.artifact_id)
+            sev = f", {c.severity} severity" if c.severity else ""
+            lines.append(f"  [{c.ref}] {c.snippet} (in {label}{sev})")
+    if context:
+        lines.append("\nFiles and columns behind them:")
+        for c in context:
+            label = titles.get(c.artifact_id, c.artifact_id)
+            lines.append(f"  [{c.ref}] {c.snippet} (in {label})")
     lines.append("\nThese are observations for review, not verdicts on correctness.")
     return "\n".join(lines)
 
@@ -281,7 +323,11 @@ def ask(question: str, artifact_ids: list[str] | None = None) -> dict:
     if mode == "deterministic" and raw_mode == "llm":
         final_answer = _deterministic_answer(question, evidence, titles)
 
-    confidence: ConfidenceLevel = "moderate" if len(evidence) >= 3 else "low"
+    confidence: ConfidenceLevel = "low"
+    if len(evidence) >= 5:
+        confidence = "high"
+    elif len(evidence) >= 3:
+        confidence = "moderate"
 
     suggested: list[str] = []
     artifact_refs = sorted({c.artifact_id for c in evidence})

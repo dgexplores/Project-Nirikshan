@@ -47,6 +47,9 @@ INGEST_STEPS = ["receive_upload", "parse", "freeze_manifest", "profile", "fitnes
 # deterministic (sort by |score| desc, stable for ties).
 MAX_ANOMALY_FINDINGS_PER_ARTIFACT = 12
 
+# Exact-row evidence lookups return at most this many stored rows.
+MAX_EVIDENCE_ROWS = 25
+
 
 # Payload fields that change on every construction; excluded from the
 # stability hash so reruns produce identical finding ids.
@@ -516,3 +519,110 @@ def validate_upload_filename(filename: str) -> None:
     if ext not in SUPPORTED_EXTENSIONS:
         supported = ", ".join(sorted(SUPPORTED_EXTENSIONS))
         raise AppError(400, "unsupported_format", f"unsupported file type '{ext}'. supported: {supported}")
+
+
+def _jsonable(value: Any) -> Any:
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    return str(value)
+
+
+def finding_evidence(finding_id: str, limit: int = MAX_EVIDENCE_ROWS) -> dict[str, Any]:
+    """Return the exact stored rows behind a finding (its pinpoint location).
+
+    Anomaly/YoY findings carry a slice like ``{district: X, period: Y}``;
+    rows matching every slice entry are returned with 1-based file row
+    numbers. Benford findings return rows carrying the most excessive leading
+    digit of the flagged column. Aggregate kinds (contradiction, consensus,
+    drift) have no single row, so they return their linked artifacts instead.
+    """
+    with db_session() as session:
+        frow = session.get(FindingRow, finding_id)
+        if frow is None:
+            raise AppError(404, "finding_not_found", f"finding {finding_id} not found")
+        payload = dict(frow.payload_json or {})
+        kind = frow.kind
+        artifact_ids = list(map(str, frow.artifact_ids or []))
+
+    if kind in ("contradiction", "consensus", "drift"):
+        return {
+            "finding_id": finding_id,
+            "kind": kind,
+            "artifact_ids": artifact_ids,
+            "columns": [],
+            "rows": [],
+            "matched": 0,
+            "returned": 0,
+            "truncated": False,
+            "label": "This flag compares files or definitions, it points at no single row.",
+            "note": "Open the linked files and the lineage graph to trace it.",
+        }
+
+    artifact_id = artifact_ids[0] if artifact_ids else None
+    if artifact_id is None:
+        raise AppError(404, "finding_not_found", f"finding {finding_id} has no linked artifact")
+    with db_session() as session:
+        row = session.get(ArtifactRow, artifact_id)
+        if row is None:
+            raise AppError(404, "artifact_not_found", f"artifact {artifact_id} not found")
+        raw_uri = row.raw_uri
+    df = load_dataframe(raw_uri)
+
+    filt: dict[str, str] = {}
+    metric: str | None = None
+    if kind == "anomaly":
+        filt = {k: str(v) for k, v in (payload.get("slice") or {}).items()}
+        metric = payload.get("metric")
+    elif kind == "benford":
+        metric = payload.get("column")
+        digits = payload.get("digits") or []
+        worst = max(digits, key=lambda d: float(d.get("excess", 0)), default=None)
+        filt = {"__leading_digit__": str(worst.get("digit"))} if worst else {}
+
+    if metric is not None and metric not in df.columns:
+        raise AppError(422, "column_not_found", f"column '{metric}' not found in frozen data of {artifact_id}")
+
+    def leading_digit(value: Any) -> str:
+        try:
+            text = str(abs(float(value))).lstrip("0.").replace(".", "")
+            return text[0] if text else ""
+        except (TypeError, ValueError):
+            return ""
+
+    matched: list[dict[str, Any]] = []
+    total = 0
+    cap = max(limit, 1)
+    for idx, record in enumerate(df.iter_rows(named=True), start=1):
+        ok = True
+        for key, want in filt.items():
+            have = leading_digit(record.get(metric)) if key == "__leading_digit__" else str(record.get(key))
+            if have != want:
+                ok = False
+                break
+        if ok:
+            total += 1
+            if len(matched) < cap:
+                matched.append({"_row": idx, **{c: _jsonable(record.get(c)) for c in df.columns}})
+
+    if kind == "benford" and metric:
+        label = f"Rows whose leading digit is {filt.get('__leading_digit__')} in '{metric}'"
+    elif filt:
+        human = ", ".join(f"{k} = {v}" for k, v in filt.items())
+        label = f"Rows where {human}"
+    else:
+        label = f"Sample rows of '{metric}'" if metric else "Stored rows"
+    return {
+        "finding_id": finding_id,
+        "kind": kind,
+        "artifact_id": artifact_id,
+        "artifact_ids": artifact_ids,
+        "metric": metric,
+        "slice": {k: v for k, v in filt.items() if k != "__leading_digit__"},
+        "columns": list(df.columns),
+        "rows": matched,
+        "matched": total,
+        "returned": len(matched),
+        "truncated": total > len(matched),
+        "label": label,
+        "note": None,
+    }
