@@ -57,8 +57,8 @@ These are live, checkable facts, not marketing claims. Every figure below is eit
 | | |
 |---|---|
 | Forensic engines | 5 (drift, anomaly, contradiction, false consensus, Benford) |
-| Real government datasets ingested | 3, from data.gov.in and nrega.nic.in |
-| Real findings from real data, live right now | 67 (51 anomaly, 16 Benford), out of 87 total |
+| Real government datasets ingested | 4, from data.gov.in, desagri/APY and nrega.nic.in |
+| Real findings from real data, live right now | 85 (66 anomaly, 16 Benford, 3 contradiction), out of 106 total |
 | Backend tests passing | 168, zero failures |
 | Strongest real finding | SAS Nagar (Mohali) district's school enrollment ratio hits 145% of capacity by 2022, z-score 3.78 against its peers |
 | Languages Ask Detective answers in | Hindi and English, both cited |
@@ -129,6 +129,7 @@ BDD reads a dataset the way a careful analyst would, and it never pretends to kn
 |---|---|---|
 | Punjab school enrollment, Primary Girls (data.gov.in) | The Mohali 145% finding: exact rows, graph pinpoint | [ger_primary_girls_punjab.csv](https://raw.githubusercontent.com/dgexplores/bharat-data-detective/main/data/real-samples/punjab-ger-schools-2019-2022/ger_primary_girls_punjab.csv) |
 | MGNREGA Punjab FY2024-25, 6,784 rows (nrega.nic.in) | Anomaly + digit-pattern findings | [mgnrega_punjab_fy2024-25.csv](https://raw.githubusercontent.com/dgexplores/bharat-data-detective/main/data/real-samples/mgnrega-punjab-fy2024-25/mgnrega_punjab_fy2024-25.csv) |
+| Wheat APY Punjab vs Haryana (DES Agri via data.gov.in) | Cross-state compare: gates correctly block different districts | [wheat_punjab_apy.csv](https://raw.githubusercontent.com/dgexplores/bharat-data-detective/main/data/real-samples/apy-wheat-punjab-haryana/wheat_punjab_apy.csv) |
 | Kisan Call Centre sample, 5,000 rows (data.gov.in API) | Honest zero: grade A, no forced findings | [kcc_punjab_sample.csv](https://raw.githubusercontent.com/dgexplores/bharat-data-detective/main/data/real-samples/kcc-punjab-sample/kcc_punjab_sample.csv) |
 
 **Real government data, not just synthetic fixtures, with a real finding in it:**

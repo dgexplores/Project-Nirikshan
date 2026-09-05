@@ -18,6 +18,16 @@ timestamp, SHA-256) for each one is recorded in
   [nrega.nic.in](https://nrega.nic.in) release via a public GitHub mirror.
 - `kcc-punjab-sample/`, a 5,000-row Punjab sample of the Kisan Call Centre
   dataset, pulled from data.gov.in's own Open Government Data API.
+- `apy-wheat-punjab-haryana/`, district-wise wheat area/production/yield for
+  Punjab (238 rows) and Haryana (277 rows), 1998-2012, sliced byte-identically
+  from the Directorate of Economics and Statistics APY series via the
+  data.gov.in catalog
+  ([district-wise season-wise crop production statistics](https://www.data.gov.in/catalog/district-wise-season-wise-crop-production-statistics-0)),
+  retrieved through its cleaned open mirror
+  ([k0rn/India_Agri_Data](https://github.com/k0rn/India_Agri_Data))
+  after the portal's own download sat behind a CAPTCHA/SSO wall.
+  Punjab-vs-Haryana compare correctly blocks on geography while passing
+  unit, time, and definition gates.
 
 Reproduce any of these locally with the `bdd` CLI, for example:
 

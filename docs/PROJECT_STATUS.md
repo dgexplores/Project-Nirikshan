@@ -18,7 +18,7 @@ file is the checklist.
 | Web production build | Clean, no new dependencies added |
 | Backend deploy | Live on Render at https://bdd-api.onrender.com, free plan, Singapore |
 | Frontend deploy (Vercel) | Live and current, pointed at the Render backend |
-| Real data.gov.in findings | Live on the demo. 16 artifacts, 87 findings, 67 of them from the real datasets |
+| Real data.gov.in findings | Live on the demo. 18 artifacts, 106 findings, 85 of them from the real datasets |
 | Prototype video | Script written, not recorded |
 
 ---
