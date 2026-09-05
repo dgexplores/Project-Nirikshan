@@ -63,7 +63,15 @@ export default function ComparePage() {
     listArtifacts()
       .then((res) => {
         setArtifacts(res.items);
-        if (res.items.length >= 2) {
+        // Deep link from a finding: ?a=<id>&b=<id> preselects the pair.
+        const qs = new URLSearchParams(window.location.search);
+        const ids = new Set(res.items.map((a) => a.artifact_id));
+        const qa = qs.get("a") ?? "";
+        const qb = qs.get("b") ?? "";
+        if (qa && qb && ids.has(qa) && ids.has(qb)) {
+          setAId(qa);
+          setBId(qb);
+        } else if (res.items.length >= 2) {
           setAId(res.items[0].artifact_id);
           setBId(res.items[1].artifact_id);
         }

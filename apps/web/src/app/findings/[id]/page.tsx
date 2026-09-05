@@ -22,6 +22,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Panel } from "@/components/ui/Panel";
 import { getFinding, reviewFinding, type ReviewDecision } from "@/lib/api";
 import { EvidenceRows } from "@/components/EvidenceRows";
+import { NextSteps } from "@/components/NextSteps";
 import { KIND_LABEL } from "@/lib/labels";
 import type {
   AnomalyFinding,
@@ -163,8 +164,12 @@ export default function FindingDetailPage() {
             ))}
           </ol>
 
-          <div className="mt-3">
+          <div className="mt-3" id="exact-rows">
             <EvidenceRows findingId={id} datasetHref={datasetHref} graphHref={graphHref} />
+          </div>
+
+          <div className="mt-3">
+            <NextSteps kind={finding.kind} artifactIds={finding.artifact_ids} findingTitle={finding.title} />
           </div>
 
           <Link

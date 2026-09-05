@@ -57,6 +57,12 @@ export default function AskPage() {
 
   useEffect(() => {
     listArtifacts().then((res) => setArtifacts(res.items)).catch(() => {});
+    // Deep link from a finding: ?q=<question>&scope=<id,id> prefills it.
+    const qs = new URLSearchParams(window.location.search);
+    const q = qs.get("q") ?? "";
+    if (q) setQuestion(q);
+    const scope = (qs.get("scope") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    if (scope.length) setScopeIds(scope);
   }, []);
 
   useEffect(() => {
