@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from bdd_forensics.false_consensus import SourceClaim, detect_false_consensus
+from sqlalchemy import select
 
 from bdd_api.config import get_settings
 from bdd_api.db import ArtifactRow, db_session
@@ -244,3 +245,78 @@ def seed_demo() -> dict[str, Any]:
 def _exists(artifact_id: str) -> bool:
     with db_session() as session:
         return session.get(ArtifactRow, artifact_id) is not None
+
+
+def _repo_root() -> Path:
+    """Repository root in a checkout, /app inside the Docker image."""
+    return Path(__file__).resolve().parents[4]
+
+
+# Real government samples shipped with the repo (and the Docker image) so a
+# fresh disk can re-freeze them without any upload. Titles match the live
+# demo; keep each under the 300-char title limit.
+_GER_DIR = Path("data/real-samples/punjab-ger-schools-2019-2022")
+REAL_SAMPLES: list[dict[str, str]] = [
+    {"filename": str(_GER_DIR / "ger_primary_boys_punjab.csv"), "artifact_id": "art-ger-primary-boys", "source_id": "SRC-GER-7632443-DATAGOVIN", "title": "District-wise Gross Enrollment Ratio of Boys in Primary Schools of Punjab 2019-2022", "release_date": "2019-2022"},
+    {"filename": str(_GER_DIR / "ger_primary_girls_punjab.csv"), "artifact_id": "art-ger-primary-girls", "source_id": "SRC-GER-7632450-DATAGOVIN", "title": "District-wise Gross Enrollment Ratio of Girls in Primary Schools of Punjab 2019-2022", "release_date": "2019-2022"},
+    {"filename": str(_GER_DIR / "ger_upper-primary_boys_punjab.csv"), "artifact_id": "art-ger-upper-primary-boys", "source_id": "SRC-GER-7632455-DATAGOVIN", "title": "District-wise Gross Enrollment Ratio of Boys in Upper Primary Schools of Punjab 2019-2022", "release_date": "2019-2022"},
+    {"filename": str(_GER_DIR / "ger_upper-primary_girls_punjab.csv"), "artifact_id": "art-ger-upper-primary-girls", "source_id": "SRC-GER-7632490-DATAGOVIN", "title": "District-wise Gross Enrollment Ratio of Girls in Upper Primary Schools of Punjab 2019-2022", "release_date": "2019-2022"},
+    {"filename": str(_GER_DIR / "ger_secondary_boys_punjab.csv"), "artifact_id": "art-ger-secondary-boys", "source_id": "SRC-GER-7632499-DATAGOVIN", "title": "District-wise Gross Enrollment Ratio of Boys in Secondary Schools of Punjab 2019-2022", "release_date": "2019-2022"},
+    {"filename": str(_GER_DIR / "ger_secondary_girls_punjab.csv"), "artifact_id": "art-ger-secondary-girls", "source_id": "SRC-GER-7632514-DATAGOVIN", "title": "District-wise Gross Enrollment Ratio of Girls in Secondary Schools of Punjab 2019-2022", "release_date": "2019-2022"},
+    {"filename": str(_GER_DIR / "ger_higher-secondary_boys_punjab.csv"), "artifact_id": "art-ger-higher-secondary-boys", "source_id": "SRC-GER-7632520-DATAGOVIN", "title": "District-wise Gross Enrollment Ratio of Boys in Higher Secondary Schools of Punjab 2019-2022", "release_date": "2019-2022"},
+    {"filename": str(_GER_DIR / "ger_higher-secondary_girls_punjab.csv"), "artifact_id": "art-ger-higher-secondary-girls", "source_id": "SRC-GER-7632532-DATAGOVIN", "title": "District-wise Gross Enrollment Ratio of Girls in Higher Secondary Schools of Punjab 2019-2022", "release_date": "2019-2022"},
+    {"filename": "data/real-samples/mgnrega-punjab-fy2024-25/mgnrega_punjab_fy2024-25.csv", "artifact_id": "art-real-mgnrega-punjab", "source_id": "SRC-MGN-REAL-PUNJAB", "title": "MGNREGA Punjab District-wise Data at a Glance FY2024-25", "release_date": "FY 2024-25"},
+    {"filename": "data/real-samples/kcc-punjab-sample/kcc_punjab_sample.csv", "artifact_id": "art-real-kcc-punjab", "source_id": "SRC-AIK-01", "title": "Kisan Call Centre Punjab sample (data.gov.in OGD API)", "release_date": "2023 sample"},
+]
+
+
+def repair_missing_raws() -> dict[str, list[str]]:
+    """Re-freeze every artifact row whose raw file is gone (ephemeral disk).
+
+    Demo fixtures regenerate byte-identically; real samples re-freeze from
+    the shipped copies. Findings keep stable ids, so re-running engines
+    writes nothing new. Never raises: one bad file must not block boot.
+    """
+    settings = get_settings()
+    ensure_fixture_files(settings.fixtures_dir)
+    by_id: dict[str, dict[str, Any]] = {s["artifact_id"]: {**s, "kind": "demo"} for s in FIXTURES}
+    root = _repo_root()
+    for spec in REAL_SAMPLES:
+        by_id[spec["artifact_id"]] = {**spec, "kind": "real"}
+
+    with db_session() as session:
+        rows = session.scalars(select(ArtifactRow)).all()
+        missing = [(r.artifact_id, r.raw_uri) for r in rows if not Path(r.raw_uri).exists()]
+
+    repaired: list[str] = []
+    skipped_no_source: list[str] = []
+    reporter = SilentStepReporter()
+    for artifact_id, _old_uri in missing:
+        spec = by_id.get(artifact_id)
+        if spec is None:
+            skipped_no_source.append(artifact_id)
+            continue
+        if spec["kind"] == "demo":
+            path = settings.fixtures_dir / spec["filename"]
+        else:
+            path = root / spec["filename"]
+            if not path.exists():
+                skipped_no_source.append(artifact_id)
+                continue
+        try:
+            run_ingest(
+                tmp_path=path,
+                original_filename=Path(spec["filename"]).name,
+                artifact_id=artifact_id,
+                source_id=spec["source_id"],
+                title=spec["title"],
+                release_date=spec.get("release_date"),
+                settings=settings,
+                reporter=reporter,
+            )
+            run_anomalies(artifact_id)
+            repaired.append(artifact_id)
+        except Exception:
+            logger.exception("repair failed for %s", artifact_id)
+            skipped_no_source.append(artifact_id)
+    return {"repaired": repaired, "skipped_no_source": skipped_no_source}

@@ -119,6 +119,13 @@ def test_evidence_handles_aggregate_kinds_and_missing(api: TestClient) -> None:
     assert body["note"]
 
 
+def test_repair_is_noop_on_empty_db(api: TestClient) -> None:
+    from bdd_api.seed import REAL_SAMPLES, repair_missing_raws
+
+    assert repair_missing_raws() == {"repaired": [], "skipped_no_source": []}
+    assert len(REAL_SAMPLES) == 10
+
+
 def test_stale_jobs_recovered_as_failed(api: TestClient) -> None:
     from bdd_api.jobs import create_job, get_job, recover_stale_jobs
 

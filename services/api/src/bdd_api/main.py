@@ -33,6 +33,14 @@ async def lifespan(app: FastAPI):
     settings.ensure_dirs()
     engine = init_engine(str(settings.database_url))
     recover_stale_jobs()
+    try:
+        from bdd_api.seed import repair_missing_raws
+
+        result = repair_missing_raws()
+        if result["repaired"]:
+            logging.getLogger("bdd").info("repaired raws: %s", ",".join(result["repaired"]))
+    except Exception:
+        logging.getLogger("bdd").exception("startup raw repair failed")
     start_executor(settings)
     logging.getLogger("bdd").info("startup complete db=%s", settings.database_url.split("://")[0])
     app.state.engine = engine
