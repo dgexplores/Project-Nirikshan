@@ -573,6 +573,10 @@ def finding_evidence(finding_id: str, limit: int = MAX_EVIDENCE_ROWS) -> dict[st
     if kind == "anomaly":
         filt = {k: str(v) for k, v in (payload.get("slice") or {}).items()}
         metric = payload.get("metric")
+        if not filt and metric is not None and payload.get("observed") is not None:
+            # Older IQR findings carry no slice; the observed value itself
+            # still pinpoints the row(s) without changing any stored ids.
+            filt = {metric: str(payload.get("observed"))}
     elif kind == "benford":
         metric = payload.get("column")
         digits = payload.get("digits") or []
@@ -592,10 +596,25 @@ def finding_evidence(finding_id: str, limit: int = MAX_EVIDENCE_ROWS) -> dict[st
     matched: list[dict[str, Any]] = []
     total = 0
     cap = max(limit, 1)
+    numeric_want: dict[str, float] = {}
+    for key, want in filt.items():
+        try:
+            numeric_want[key] = float(want)
+        except (TypeError, ValueError):
+            continue
     for idx, record in enumerate(df.iter_rows(named=True), start=1):
         ok = True
         for key, want in filt.items():
-            have = leading_digit(record.get(metric)) if key == "__leading_digit__" else str(record.get(key))
+            cell = record.get(key)
+            if key in numeric_want:
+                try:
+                    if abs(float(cell) - numeric_want[key]) > 1e-6 * max(abs(numeric_want[key]), 1.0):
+                        ok = False
+                        break
+                    continue
+                except (TypeError, ValueError):
+                    pass
+            have = leading_digit(record.get(metric)) if key == "__leading_digit__" else str(cell)
             if have != want:
                 ok = False
                 break

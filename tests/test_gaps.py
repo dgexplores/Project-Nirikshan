@@ -126,6 +126,32 @@ def test_repair_is_noop_on_empty_db(api: TestClient) -> None:
     assert len(REAL_SAMPLES) == 10
 
 
+def test_evidence_pinpoints_sliceless_iqr_finding(api: TestClient) -> None:
+    from conftest import wait_job
+
+    csv = "district,value\nA,1\nB,2\nC,3\nD,4\nE,5000\nF,6\nG,7\nH,8\n"
+    accepted = api.post(
+        "/artifacts/ingest",
+        params={"artifact_id": "art_iqr", "source_id": "SRC-TEST"},
+        files={"file": ("d.csv", io.BytesIO(csv.encode()), "text/csv")},
+    ).json()
+    wait_job(api, accepted["job_id"])
+    api.post("/artifacts/art_iqr/analyze")
+    items = api.get("/findings", params={"kind": "anomaly"}).json()["items"]
+    iqr = None
+    for f in items:
+        if "art_iqr" not in f["artifact_ids"]:
+            continue
+        detail = api.get(f"/findings/{f['id']}").json()
+        if detail["payload"].get("method") == "iqr":
+            iqr = f
+            break
+    assert iqr is not None
+    body = api.get(f"/findings/{iqr['id']}/evidence").json()
+    assert body["matched"] >= 1
+    assert any("5000" in str(v) for r in body["rows"] for v in r.values())
+
+
 def test_stale_jobs_recovered_as_failed(api: TestClient) -> None:
     from bdd_api.jobs import create_job, get_job, recover_stale_jobs
 
