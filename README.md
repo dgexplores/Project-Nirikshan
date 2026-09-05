@@ -32,7 +32,7 @@ cd bharat-data-detective && docker compose -f infra/docker/compose.yml up --buil
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=dgexplores/bharat-data-detective)
 
 **Deploy your own free copy:**
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dgexplores/bharat-data-detective&project-name=bharat-data-detective&root-directory=apps/web) [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/github/dgexplores/bharat-data-detective)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/dgexplores/bharat-data-detective&project-name=bharat-data-detective&root-directory=apps/web) [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/dgexplores/bharat-data-detective)
 
 **Quick test (copy-paste in terminal):**
 ```bash
