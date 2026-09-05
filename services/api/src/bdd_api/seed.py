@@ -267,6 +267,8 @@ REAL_SAMPLES: list[dict[str, str]] = [
     {"filename": str(_GER_DIR / "ger_higher-secondary_girls_punjab.csv"), "artifact_id": "art-ger-higher-secondary-girls", "source_id": "SRC-GER-7632532-DATAGOVIN", "title": "District-wise Gross Enrollment Ratio of Girls in Higher Secondary Schools of Punjab 2019-2022", "release_date": "2019-2022"},
     {"filename": "data/real-samples/mgnrega-punjab-fy2024-25/mgnrega_punjab_fy2024-25.csv", "artifact_id": "art-real-mgnrega-punjab", "source_id": "SRC-MGN-REAL-PUNJAB", "title": "MGNREGA Punjab District-wise Data at a Glance FY2024-25", "release_date": "FY 2024-25"},
     {"filename": "data/real-samples/kcc-punjab-sample/kcc_punjab_sample.csv", "artifact_id": "art-real-kcc-punjab", "source_id": "SRC-AIK-01", "title": "Kisan Call Centre Punjab sample (data.gov.in OGD API)", "release_date": "2023 sample"},
+    {"filename": "data/real-samples/apy-wheat-punjab-haryana/wheat_punjab_apy.csv", "artifact_id": "art-real-wheat-punjab", "source_id": "SRC-APY-WHEAT-PB", "title": "Wheat area-production-yield by district, Punjab (DES Agri APY)", "release_date": "1998-2012"},
+    {"filename": "data/real-samples/apy-wheat-punjab-haryana/wheat_haryana_apy.csv", "artifact_id": "art-real-wheat-haryana", "source_id": "SRC-APY-WHEAT-HR", "title": "Wheat area-production-yield by district, Haryana (DES Agri APY)", "release_date": "1998-2012"},
 ]
 
 

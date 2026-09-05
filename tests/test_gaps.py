@@ -123,7 +123,7 @@ def test_repair_is_noop_on_empty_db(api: TestClient) -> None:
     from bdd_api.seed import REAL_SAMPLES, repair_missing_raws
 
     assert repair_missing_raws() == {"repaired": [], "skipped_no_source": []}
-    assert len(REAL_SAMPLES) == 10
+    assert len(REAL_SAMPLES) == 12
 
 
 def test_evidence_pinpoints_sliceless_iqr_finding(api: TestClient) -> None:

@@ -47,6 +47,20 @@ function numericColumns(profile: DatasetProfile | null): string[] {
     .map((c) => c.name);
 }
 
+function shortId(id: string) {
+  return id.length > 22 ? `${id.slice(0, 20)}…` : id;
+}
+
+function FileMeta({ id, artifacts }: { id: string; artifacts: ArtifactSummary[] }) {  const a = artifacts.find((x) => x.artifact_id === id);
+  if (!a) return null;
+  const bits = [
+    a.row_count != null ? `${a.row_count.toLocaleString("en-IN")} rows` : null,
+    a.release_date,
+  ].filter(Boolean);
+  if (!bits.length) return null;
+  return <span className="mt-1 block text-xs font-normal text-[var(--foreground-faint)]">{bits.join(" · ")}</span>;
+}
+
 export default function ComparePage() {
   const [artifacts, setArtifacts] = useState<ArtifactSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -113,23 +127,61 @@ export default function ComparePage() {
   // Autofill heals stale picks too: if the chosen column is not in the
   // current file's list (e.g. right after switching files, while the new
   // profile was still loading), fall back to that file's first column
-  // instead of sending a column the file doesn't have.
+  // instead of sending a column the file doesn't have. File B prefers the
+  // same column name as File A when both files share it, since comparing
+  // like with like is the common case.
   useEffect(() => {
     if (colsA.length && !colsA.includes(colA)) setColA(colsA[0]);
-    if (colsB.length && !colsB.includes(colB)) setColB(colsB[0]);
+    if (colsB.length && !colsB.includes(colB)) setColB(colA && colsB.includes(colA) ? colA : colsB[0]);
   }, [colsA, colsB, colA, colB]);
+
+  function swap() {
+    setAId(bId);
+    setBId(aId);
+  }
+
+  interface HistoryEntry { a: string; ca: string; b: string; cb: string; overall: string; at: string }
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  useEffect(() => {
+    try {
+      setHistory(JSON.parse(localStorage.getItem("bdd-compare-history") ?? "[]") as HistoryEntry[]);
+    } catch {
+      setHistory([]);
+    }
+  }, []);
+  function saveHistory(entry: HistoryEntry) {
+    setHistory((prev) => {
+      const next = [entry, ...prev.filter((h) => !(h.a === entry.a && h.b === entry.b && h.ca === entry.ca && h.cb === entry.cb))].slice(0, 5);
+      try {
+        localStorage.setItem("bdd-compare-history", JSON.stringify(next));
+      } catch {
+        // Private browsing etc: history is a convenience, not a requirement.
+      }
+      return next;
+    });
+  }
 
   async function run() {
     if (!aId || !bId || !colA || !colB) return;
     setRunning(true);
     setResult(null);
     try {
-      setResult(await compareArtifacts({ artifact_a: aId, column_a: colA, artifact_b: bId, column_b: colB }));
+      const res = await compareArtifacts({ artifact_a: aId, column_a: colA, artifact_b: bId, column_b: colB });
+      setResult(res);
+      saveHistory({ a: aId, ca: colA, b: bId, cb: colB, overall: res.overall, at: new Date().toISOString() });
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setRunning(false);
     }
+  }
+
+  function rerun(h: { a: string; ca: string; b: string; cb: string }) {
+    setAId(h.a);
+    setBId(h.b);
+    setColA(h.ca);
+    setColB(h.cb);
+    setResult(null);
   }
 
   if (error && !result && !artifacts) return <ErrorState message={error} onRetry={() => setError(null)} />;
@@ -165,6 +217,7 @@ export default function ComparePage() {
                     </option>
                   ))}
                 </Select>
+                <FileMeta id={aId} artifacts={artifacts} />
               </label>
               <label className="block text-sm font-medium text-[var(--foreground-muted)]">
                 Column to compare
@@ -182,8 +235,15 @@ export default function ComparePage() {
                   </Select>
                 )}
               </label>
-              <span className="hidden pb-2.5 text-center text-[var(--foreground-faint)] md:block" aria-hidden>
-                vs
+              <span className="hidden pb-1 text-center md:block">
+                <button
+                  onClick={swap}
+                  title="Swap the two files"
+                  aria-label="Swap the two files"
+                  className="rounded-full border border-[var(--border)] bg-white px-3 py-1.5 text-sm font-medium text-[var(--foreground-muted)] transition hover:border-[var(--brand)]/40 hover:text-[var(--brand)]"
+                >
+                  ⇄
+                </button>
               </span>
               <label className="block text-sm font-medium text-[var(--foreground-muted)]">
                 File B
@@ -194,6 +254,7 @@ export default function ComparePage() {
                     </option>
                   ))}
                 </Select>
+                <FileMeta id={bId} artifacts={artifacts} />
               </label>
               <label className="block text-sm font-medium text-[var(--foreground-muted)]">
                 Column to compare
@@ -239,6 +300,12 @@ export default function ComparePage() {
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-wide opacity-70">Result</div>
                   <div className="mt-1 text-xl font-bold tracking-tight">{OVERALL_LABEL[result.overall] ?? result.overall.replaceAll("_", " ")}</div>
+                  <div className="mt-1 max-w-md text-sm font-normal leading-relaxed opacity-80">
+                    {result.overall === "comparable" && "The two totals talk about the same thing in the same way. You can fairly read them side by side."}
+                    {result.overall === "partial" && "Mostly the same, but something needs adjusting or clarifying before you trust the gap."}
+                    {result.overall === "not_comparable" && "Stop here: these numbers don't mean the same thing yet. Comparing them would mislead."}
+                    {!["comparable", "partial", "not_comparable"].includes(result.overall) && "Not enough shared ground to judge yet."}
+                  </div>
                 </div>
                 <div className="flex flex-col gap-1.5 text-sm sm:items-end">
                   {Object.entries(result.totals).map(([aid, t]) => (
@@ -350,6 +417,28 @@ export default function ComparePage() {
                 </div>
               </div>
             </motion.div>
+          )}
+
+          {history.length > 0 && (
+            <Panel className="mt-4 p-4">
+              <h3 className="text-sm font-semibold text-[var(--foreground)]">Recent comparisons</h3>
+              <ul className="mt-2.5 space-y-1.5">
+                {history.map((h, i) => (
+                  <li key={`${h.a}-${h.b}-${h.ca}-${h.cb}-${i}`}>
+                    <button
+                      onClick={() => rerun(h)}
+                      title="Load this comparison again"
+                      className="flex w-full flex-wrap items-center gap-x-2 gap-y-0.5 rounded-lg border border-[var(--border)] bg-white px-3 py-2 text-left text-sm transition hover:border-[var(--brand)]/30 hover:bg-[var(--brand-soft)]"
+                    >
+                      <span className="font-medium text-[var(--foreground)]">{shortId(h.a)} · {h.ca}</span>
+                      <span className="text-[var(--foreground-faint)]">vs</span>
+                      <span className="font-medium text-[var(--foreground)]">{shortId(h.b)} · {h.cb}</span>
+                      <span className="ml-auto text-xs text-[var(--foreground-faint)]">{OVERALL_LABEL[h.overall] ?? h.overall.replaceAll("_", " ")}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </Panel>
           )}
         </>
       )}
