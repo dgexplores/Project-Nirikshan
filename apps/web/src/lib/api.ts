@@ -223,6 +223,31 @@ export function getFinding(id: string): Promise<UnifiedFinding> {
   return request(`/findings/${encodeURIComponent(id)}`);
 }
 
+export interface EvidenceRow {
+  _row: number;
+  [column: string]: string | number | boolean | null;
+}
+
+export interface EvidenceResponse {
+  finding_id: string;
+  kind: string;
+  artifact_id: string | null;
+  artifact_ids: string[];
+  metric: string | null;
+  slice: Record<string, string>;
+  columns: string[];
+  rows: EvidenceRow[];
+  matched: number;
+  returned: number;
+  truncated: boolean;
+  label: string;
+  note: string | null;
+}
+
+export function getEvidence(id: string, limit = 25): Promise<EvidenceResponse> {
+  return request(`/findings/${encodeURIComponent(id)}/evidence?limit=${limit}`);
+}
+
 export type ReviewDecision =
   | "open"
   | "needs_source_clarification"

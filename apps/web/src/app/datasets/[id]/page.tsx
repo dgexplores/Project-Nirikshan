@@ -13,7 +13,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Panel } from "@/components/ui/Panel";
 import { Button } from "@/components/ui/Button";
 import { SeverityBadge } from "@/components/ui/SeverityBadge";
-import { analyzeArtifact, getFitness, getLineage, getManifest, getProfile } from "@/lib/api";
+import { analyzeArtifact, getFinding, getFitness, getLineage, getManifest, getProfile } from "@/lib/api";
 import type { DatasetProfile, FitnessScore, LineageGraph, Manifest } from "@/lib/types";
 import { cn, gradeToneClass } from "@/lib/utils";
 
@@ -48,8 +48,26 @@ export default function DatasetDetailPage() {
   const [lineage, setLineage] = useState<LineageGraph | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("profile");
+  const [highlightId, setHighlightId] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeMsg, setAnalyzeMsg] = useState<string | null>(null);
+
+  // Deep link from a finding: ?tab=lineage&finding=<row id> opens the graph
+  // with that finding's node highlighted. Read client-side so the static
+  // build never needs a Suspense boundary for search params.
+  useEffect(() => {
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.get("tab") === "lineage" || qs.get("finding")) setTab("lineage");
+    const fid = qs.get("finding");
+    if (fid) {
+      getFinding(fid)
+        .then((f) => {
+          const inner = (f.payload as { finding_id?: string } | null)?.finding_id;
+          setHighlightId(inner ? `finding:${inner}` : null);
+        })
+        .catch(() => setHighlightId(null));
+    }
+  }, []);
 
   const loadAll = useCallback(() => {
     Promise.all([getManifest(id), getProfile(id), getFitness(id)])
@@ -249,7 +267,13 @@ export default function DatasetDetailPage() {
               <div>
                 <Panel>
                   <h3 className="mb-1 text-sm font-semibold text-[var(--foreground)]">Where this came from</h3>
-                  {lineage ? <LineageViz graph={lineage} /> : <div className="flex justify-center py-10"><Spinner /></div>}
+                  {highlightId && (
+                    <p className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-[var(--critical)]/25 bg-[var(--critical-soft)] px-3 py-1 text-xs font-medium text-[var(--critical)]">
+                      <span className="inline-block size-2 rounded-full bg-[var(--critical)]" aria-hidden />
+                      Glowing node is the flag you came from
+                    </p>
+                  )}
+                  {lineage ? <LineageViz graph={lineage} highlightId={highlightId} /> : <div className="flex justify-center py-10"><Spinner /></div>}
                 </Panel>
               </div>
             )}

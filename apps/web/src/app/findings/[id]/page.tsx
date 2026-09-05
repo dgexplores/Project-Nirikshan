@@ -21,6 +21,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { Spinner } from "@/components/ui/Spinner";
 import { Panel } from "@/components/ui/Panel";
 import { getFinding, reviewFinding, type ReviewDecision } from "@/lib/api";
+import { EvidenceRows } from "@/components/EvidenceRows";
 import { KIND_LABEL } from "@/lib/labels";
 import type {
   AnomalyFinding,
@@ -69,6 +70,10 @@ export default function FindingDetailPage() {
 
   if (error && !finding) return <ErrorState message={error} onRetry={load} />;
   if (!finding) return <div className="flex justify-center py-32"><Spinner /></div>;
+
+  const firstArtifact = finding.artifact_ids[0] ?? "";
+  const datasetHref = `/datasets/${encodeURIComponent(firstArtifact)}`;
+  const graphHref = `${datasetHref}?tab=lineage&finding=${encodeURIComponent(id)}`;
 
   return (
     <div>
@@ -129,6 +134,38 @@ export default function FindingDetailPage() {
             <strong className="font-semibold text-[var(--medium)]">What this means: </strong>
             This might be worth a closer look. We&apos;re not saying anyone did anything wrong, just flagging it for you to check. If this turns out to be serious, please double-check it before sharing with others.
           </p>
+
+          <ol className="mt-3 grid gap-2 sm:grid-cols-3">
+            {[
+              { n: "1", label: "Exact rows", hint: "shown below", href: undefined },
+              { n: "2", label: "Open the file", hint: "full context", href: datasetHref },
+              { n: "3", label: "Pinpoint on graph", hint: "how we got here", href: graphHref },
+            ].map((s) => (
+              <li key={s.n}>
+                {s.href ? (
+                  <Link href={s.href} className="flex items-center gap-2.5 rounded-xl border border-[var(--border)] bg-white px-3.5 py-2.5 transition hover:border-[var(--brand)]/30 hover:bg-[var(--brand-soft)]">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--brand)] text-xs font-bold text-white">{s.n}</span>
+                    <span>
+                      <span className="block text-sm font-medium leading-tight text-[var(--foreground)]">{s.label}</span>
+                      <span className="block text-xs leading-tight text-[var(--foreground-faint)]">{s.hint}</span>
+                    </span>
+                  </Link>
+                ) : (
+                  <span className="flex items-center gap-2.5 rounded-xl border border-[var(--brand)]/25 bg-[var(--brand-soft)] px-3.5 py-2.5">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[var(--brand)] text-xs font-bold text-white">{s.n}</span>
+                    <span>
+                      <span className="block text-sm font-medium leading-tight text-[var(--foreground)]">{s.label}</span>
+                      <span className="block text-xs leading-tight text-[var(--foreground-faint)]">{s.hint}</span>
+                    </span>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-3">
+            <EvidenceRows findingId={id} datasetHref={datasetHref} graphHref={graphHref} />
+          </div>
 
           <Link
             href={`/datasets/${encodeURIComponent(finding.artifact_ids[0] ?? "")}`}

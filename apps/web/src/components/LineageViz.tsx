@@ -25,7 +25,7 @@ const KIND_LABEL: Record<string, string> = {
  * Layered DAG layout by node kind depth. Pure SVG, no graph lib needed:
  * the lineage chain is always a simple layered pipeline.
  */
-export function LineageViz({ graph }: { graph: LineageGraph }) {
+export function LineageViz({ graph, highlightId }: { graph: LineageGraph; highlightId?: string | null }) {
   const layout = useMemo(() => {
     const order = ["raw_artifact", "parser", "profile", "rule", "finding"];
     const columns = order.map((kind) =>
@@ -93,6 +93,7 @@ export function LineageViz({ graph }: { graph: LineageGraph }) {
             const p = layout.pos.get(node.id);
             if (!p) return null;
             const color = KIND_COLOR[node.kind] ?? "var(--foreground-muted)";
+            const hot = highlightId != null && node.id === highlightId;
             return (
               <motion.g
                 key={node.id}
@@ -101,6 +102,19 @@ export function LineageViz({ graph }: { graph: LineageGraph }) {
                 transition={{ duration: 0.45, delay: i * 0.06 }}
               >
                 <g transform={`translate(${p.x}, ${p.y})`}>
+                  {hot && (
+                    <rect
+                      x={-78}
+                      y={-30}
+                      width={156}
+                      height={60}
+                      rx={16}
+                      fill="none"
+                      stroke="var(--critical)"
+                      strokeWidth={2.5}
+                      opacity={0.85}
+                    />
+                  )}
                   <rect
                     x={-72}
                     y={-24}
@@ -108,8 +122,9 @@ export function LineageViz({ graph }: { graph: LineageGraph }) {
                     height={48}
                     rx={12}
                     fill="var(--surface)"
-                    stroke={color}
-                    strokeOpacity={0.33}
+                    stroke={hot ? "var(--critical)" : color}
+                    strokeOpacity={hot ? 1 : 0.33}
+                    strokeWidth={hot ? 2.5 : 1}
                   />
                   <circle cx={-58} cy={0} r={4} fill={color} />
                   <text x={-46} y={-4} fontSize={10} fill="rgba(28,31,38,0.45)" fontFamily="var(--font-sans), sans-serif" fontWeight={600}>
