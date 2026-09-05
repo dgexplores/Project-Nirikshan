@@ -123,6 +123,14 @@ BDD reads a dataset the way a careful analyst would, and it never pretends to kn
 
 **Live proof:** click "Load demo case" on the deployed frontend and it seeds 6 clearly-labelled synthetic datasets (micro-irrigation unit drift, a planted district spike, two conflicting PM-KISAN-style totals, and a fabricated-looking payments file) → 20 findings, one of each engine, in under a second. Open https://web-tau-sandy-60.vercel.app and click `Findings`.
 
+**Try it yourself with real files (download, then drag onto the Datasets page):**
+
+| File | What you will see | Download |
+|---|---|---|
+| Punjab school enrollment, Primary Girls (data.gov.in) | The Mohali 145% finding: exact rows, graph pinpoint | [ger_primary_girls_punjab.csv](https://raw.githubusercontent.com/dgexplores/bharat-data-detective/main/data/real-samples/punjab-ger-schools-2019-2022/ger_primary_girls_punjab.csv) |
+| MGNREGA Punjab FY2024-25, 6,784 rows (nrega.nic.in) | Anomaly + digit-pattern findings | [mgnrega_punjab_fy2024-25.csv](https://raw.githubusercontent.com/dgexplores/bharat-data-detective/main/data/real-samples/mgnrega-punjab-fy2024-25/mgnrega_punjab_fy2024-25.csv) |
+| Kisan Call Centre sample, 5,000 rows (data.gov.in API) | Honest zero: grade A, no forced findings | [kcc_punjab_sample.csv](https://raw.githubusercontent.com/dgexplores/bharat-data-detective/main/data/real-samples/kcc-punjab-sample/kcc_punjab_sample.csv) |
+
 **Real government data, not just synthetic fixtures, with a real finding in it:**
 The raw files for all three datasets below, along with full source-URL and SHA-256 provenance for every one, are committed in [`data/real-samples/`](data/real-samples/) and [`data/source-register.csv`](data/source-register.csv), not just described here.
 
