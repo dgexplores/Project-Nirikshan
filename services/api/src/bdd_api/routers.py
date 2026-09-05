@@ -232,6 +232,47 @@ def get_lineage(artifact_id: str) -> LineageGraph:
     return graph
 
 
+# ---------- case export (shareable evidence bundle) ----------
+
+
+@router.get("/cases/{artifact_id}/export")
+def export_case(artifact_id: str) -> dict:
+    """One-click case file: manifest + profile + fitness + findings for an artifact.
+
+    Read-only bundle for sharing a case externally. No new persistence."""
+    with db_session() as session:
+        row = _require_artifact(session, artifact_id)
+        manifest_json = row.manifest_json
+        profile_json = row.profile_json
+        fitness_json = row.fitness_json
+        frows = [
+            f for f in session.scalars(select(FindingRow).order_by(FindingRow.created_at.asc()).limit(1000)).unique().all()
+            if artifact_id in set(map(str, f.artifact_ids or []))
+        ]
+        items = [
+            {
+                "id": f.finding_id,
+                "kind": f.kind,
+                "severity": f.severity,
+                "confidence": f.confidence,
+                "status": f.status,
+                "title": f.title,
+                "summary": f.summary,
+                "payload": f.payload_json,
+            }
+            for f in frows
+        ]
+    return {
+        "artifact_id": artifact_id,
+        "exported_at": datetime.now(UTC).isoformat(),
+        "manifest": manifest_json,
+        "profile": profile_json,
+        "fitness": fitness_json,
+        "finding_count": len(items),
+        "findings": items,
+    }
+
+
 # ---------- jobs ----------
 
 

@@ -17,8 +17,13 @@ from starlette.middleware.gzip import GZipMiddleware
 
 from bdd_api.config import get_settings
 from bdd_api.db import init_engine
-from bdd_api.errors import RequestContextMiddleware, configure_logging, install_error_handlers
-from bdd_api.jobs import shutdown_executor, start_executor
+from bdd_api.errors import (
+    ApiKeyMiddleware,
+    RequestContextMiddleware,
+    configure_logging,
+    install_error_handlers,
+)
+from bdd_api.jobs import recover_stale_jobs, shutdown_executor, start_executor
 
 
 @asynccontextmanager
@@ -27,6 +32,7 @@ async def lifespan(app: FastAPI):
     configure_logging()
     settings.ensure_dirs()
     engine = init_engine(str(settings.database_url))
+    recover_stale_jobs()
     start_executor(settings)
     logging.getLogger("bdd").info("startup complete db=%s", settings.database_url.split("://")[0])
     app.state.engine = engine
@@ -45,6 +51,7 @@ def create_app() -> FastAPI:
         ),
         lifespan=lifespan,
     )
+    app.add_middleware(ApiKeyMiddleware, api_key=settings.api_key)
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(GZipMiddleware, minimum_size=1024)
     if settings.cors_origin_list:

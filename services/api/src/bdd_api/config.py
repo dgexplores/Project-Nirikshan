@@ -46,6 +46,12 @@ class Settings(BaseSettings):
 
     job_workers: int = 2
 
+    # Optional hardening. Unset (default) keeps the current open behavior;
+    # setting BDD_API_KEY requires clients to send it as X-API-Key.
+    api_key: str | None = None
+    # Optional future vector-retrieval endpoint. Unset keeps TF-IDF fallback.
+    qdrant_url: str | None = None
+
     @field_validator("database_url")
     @classmethod
     def _normalize_database_url(cls, value: str) -> str:

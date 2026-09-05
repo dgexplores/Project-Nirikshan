@@ -14,6 +14,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy import select
+
 from bdd_api.config import Settings
 from bdd_api.db import JobRow, db_session
 
@@ -32,6 +34,30 @@ def shutdown_executor() -> None:
     if _executor is not None:
         _executor.shutdown(wait=False, cancel_futures=True)
         _executor = None
+
+
+def recover_stale_jobs() -> int:
+    """Mark jobs left queued/running by a restart as failed (retryable).
+
+    Thread-pool work does not survive a process restart, so without this the
+    UI would poll a `running` job forever. Marking them `failed` with a clear
+    message lets reviewers re-submit safely. Returns the recovered count.
+    """
+    try:
+        with db_session() as session:
+            stale = list(session.scalars(select(JobRow).where(JobRow.status.in_(("queued", "running")))))
+            for row in stale:
+                row.status = "failed"
+                row.error = "interrupted by server restart - safe to retry"
+                row.steps_json = [
+                    ({**s, "status": "failed", "detail": "interrupted by restart"} if s.get("status") in ("queued", "pending", "running") else s)
+                    for s in (row.steps_json or [])
+                ]
+            session.commit()
+            return len(stale)
+    except Exception:
+        logger.exception("stale job recovery failed")
+        return 0
 
 
 def _now() -> datetime:

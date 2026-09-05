@@ -66,7 +66,6 @@ ALLOWED_REVIEW_STATUSES = {"open", "needs_source_clarification", "resolved", "no
 
 class JobRow(Base):
     __tablename__ = "jobs"
-
     job_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     kind: Mapped[str] = mapped_column(String(48))
     status: Mapped[str] = mapped_column(String(16), default="queued", index=True)  # queued|running|done|failed
@@ -76,6 +75,20 @@ class JobRow(Base):
     error: Mapped[str | None] = mapped_column(String(2048), default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow, onupdate=_utcnow)
+
+
+class SchemaVersion(Base):
+    """Lightweight schema ledger. `create_all` stays the source of truth;
+    this row records which code version created the tables so a future
+    Alembic migration can detect pre-migration databases."""
+
+    __tablename__ = "schema_version"
+
+    version: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+SCHEMA_VERSION = 1
 
 
 class Engine:
@@ -121,6 +134,13 @@ def init_engine(database_url: str) -> Engine:
     global _engine
     _engine = Engine(database_url)
     _engine.create_all()
+    try:
+        with _engine.session_factory() as session:
+            if session.get(SchemaVersion, SCHEMA_VERSION) is None:
+                session.add(SchemaVersion(version=SCHEMA_VERSION))
+                session.commit()
+    except Exception:
+        logger.exception("schema version stamp failed")
     return _engine
 
 

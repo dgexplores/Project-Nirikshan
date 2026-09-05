@@ -55,7 +55,6 @@ def _error_payload(code: str, message: str, request_id: str) -> dict:
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
     """Attach X-Request-Id to every request/response and log access lines."""
-
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[JSONResponse]]) -> JSONResponse:
         request_id = request.headers.get("x-request-id") or uuid.uuid4().hex[:16]
         request.state.request_id = request_id
@@ -65,6 +64,29 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
             json.dumps({"event": "http", "method": request.method, "path": request.url.path, "status": response.status_code, "request_id": request_id})
         )
         return response
+
+
+_OPEN_PATHS = {"/health", "/health/ready", "/docs", "/openapi.json", "/redoc"}
+
+
+class ApiKeyMiddleware(BaseHTTPMiddleware):
+    """Optional shared-key gate. Inactive when no key is configured.
+
+    When ``BDD_API_KEY`` is set, every route except health/docs needs a
+    matching ``X-API-Key`` header. Default (unset) keeps current behavior.
+    """
+
+    def __init__(self, app: FastAPI, api_key: str | None) -> None:
+        super().__init__(app)
+        self._api_key = (api_key or "").strip() or None
+
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[JSONResponse]]) -> JSONResponse:
+        if self._api_key is None or request.url.path in _OPEN_PATHS:
+            return await call_next(request)
+        if request.headers.get("x-api-key") == self._api_key:
+            return await call_next(request)
+        request_id = getattr(request.state, "request_id", "-")
+        return JSONResponse(status_code=401, content=_error_payload("unauthorized", "valid X-API-Key required", request_id))
 
 
 def install_error_handlers(app: FastAPI) -> None:
