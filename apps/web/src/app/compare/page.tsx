@@ -61,7 +61,7 @@ export default function ComparePage() {
 
   useEffect(() => {
     listArtifacts()
-      .then((res) => {
+      .then(async (res) => {
         setArtifacts(res.items);
         // Deep link from a finding: ?a=<id>&b=<id> preselects the pair.
         const qs = new URLSearchParams(window.location.search);
@@ -71,9 +71,25 @@ export default function ComparePage() {
         if (qa && qb && ids.has(qa) && ids.has(qb)) {
           setAId(qa);
           setBId(qb);
-        } else if (res.items.length >= 2) {
-          setAId(res.items[0].artifact_id);
-          setBId(res.items[1].artifact_id);
+          return;
+        }
+        // Default to the first two files that actually have measurable
+        // numbers. Files like call logs have none, preselecting one would
+        // leave an empty column box and a dead Compare button.
+        const withMetrics: string[] = [];
+        for (const a of res.items) {
+          try {
+            const p = await getProfile(a.artifact_id);
+            if (numericColumns(p).length > 0) withMetrics.push(a.artifact_id);
+          } catch {
+            // A file whose profile won't load can't be compared either.
+          }
+          if (withMetrics.length >= 2) break;
+        }
+        const fallback = withMetrics.length >= 2 ? withMetrics : res.items.map((a) => a.artifact_id);
+        if (fallback.length >= 2) {
+          setAId(fallback[0]);
+          setBId(fallback[1]);
         }
       })
       .catch((e: Error) => setError(e.message));
@@ -148,13 +164,19 @@ export default function ComparePage() {
               </label>
               <label className="block text-sm font-medium text-[var(--foreground-muted)]">
                 Column to compare
-                <Select value={colA} onChange={(e) => setColA(e.target.value)} className="mt-1.5 text-sm">
-                  {colsA.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </Select>
+                {profileA && colsA.length === 0 ? (
+                  <span className="mt-1.5 block rounded-lg border border-[var(--medium)]/25 bg-[var(--medium-soft)] px-3 py-2 text-xs font-normal leading-relaxed text-[var(--medium)]">
+                    This file has no measurable numbers (only names, IDs, dates), so there is nothing to compare here. Pick another file above.
+                  </span>
+                ) : (
+                  <Select value={colA} onChange={(e) => setColA(e.target.value)} className="mt-1.5 text-sm">
+                    {colsA.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </Select>
+                )}
               </label>
               <span className="hidden pb-2.5 text-center text-[var(--foreground-faint)] md:block" aria-hidden>
                 vs
@@ -171,13 +193,19 @@ export default function ComparePage() {
               </label>
               <label className="block text-sm font-medium text-[var(--foreground-muted)]">
                 Column to compare
-                <Select value={colB} onChange={(e) => setColB(e.target.value)} className="mt-1.5 text-sm">
-                  {colsB.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </Select>
+                {profileB && colsB.length === 0 ? (
+                  <span className="mt-1.5 block rounded-lg border border-[var(--medium)]/25 bg-[var(--medium-soft)] px-3 py-2 text-xs font-normal leading-relaxed text-[var(--medium)]">
+                    This file has no measurable numbers (only names, IDs, dates), so there is nothing to compare here. Pick another file above.
+                  </span>
+                ) : (
+                  <Select value={colB} onChange={(e) => setColB(e.target.value)} className="mt-1.5 text-sm">
+                    {colsB.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </Select>
+                )}
               </label>
               <Button onClick={run} disabled={running || !aId || !bId || !colA || !colB || aId === bId} className="justify-center whitespace-nowrap">
                 {running ? (
@@ -189,7 +217,10 @@ export default function ComparePage() {
                 )}
               </Button>
             </div>
-            <p className="mt-2.5 text-center text-sm text-[var(--foreground-faint)]">Tip: even if two columns have the same name, they might not mean the same thing. We check for that.</p>
+            <p className="mt-2.5 text-center text-sm text-[var(--foreground-faint)]">
+              Tip: even if two columns have the same name, they might not mean the same thing. We check for that.
+              {aId !== "" && aId === bId && " Pick two different files above to start comparing."}
+            </p>
           </Panel>
 
           {error && (

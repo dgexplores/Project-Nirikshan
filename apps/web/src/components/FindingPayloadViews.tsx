@@ -20,6 +20,15 @@ function Row({ label, value }: { label: React.ReactNode; value: React.ReactNode 
   );
 }
 
+function SimpleWords({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-[var(--good)]/25 bg-[var(--good-soft)] px-4 py-3">
+      <div className="text-xs font-semibold uppercase tracking-wide text-[var(--good)]/90">In simple words</div>
+      <div className="mt-1.5 space-y-1.5 text-sm leading-relaxed text-[var(--foreground)]">{children}</div>
+    </div>
+  );
+}
+
 export function AnomalyPayloadView({ finding }: { finding: AnomalyFinding }) {
   const scale = Math.max(Math.abs(finding.observed), Math.abs(finding.expected), 1);
   const pct = (v: number) => `${Math.max((Math.abs(v) / scale) * 100, 4)}%`;
@@ -77,6 +86,19 @@ export function AnomalyPayloadView({ finding }: { finding: AnomalyFinding }) {
           <p className="mt-1.5 text-sm leading-relaxed text-[var(--foreground-muted)]">{finding.caveats.join(" · ")}</p>
         </div>
       )}
+
+      <SimpleWords>
+        <p>
+          Think of a classroom where most students score around {finding.expected.toLocaleString("en-IN")}. One student
+          scores {finding.observed.toLocaleString("en-IN")}, about {Math.abs(deltaPct).toFixed(0)}%{" "}
+          {delta >= 0 ? "higher" : "lower"}. That student may have studied harder, or their paper may have been marked
+          differently. This flag says only that: this one stands far apart from the rest, please check why.
+        </p>
+        <p>
+          Where to look: {sliceText || "the whole file"}. How to settle it: open the exact rows below and compare with
+          the original register for that place and time.
+        </p>
+      </SimpleWords>
     </div>
   );
 }
@@ -125,6 +147,15 @@ export function DriftPayloadView({ finding }: { finding: DriftFinding }) {
         </div>
         <Row label="Can we still compare these?" value={<span className="capitalize">{GATE_STATE_LABEL[finding.comparability_decision] ?? finding.comparability_decision.replaceAll("_", " ")}</span>} />
       </div>
+
+      <SimpleWords>
+        <p>
+          Imagine measuring a room in feet one year and in metres the next, then arguing the room shrank. Nothing about
+          the room changed, only the ruler. That is what happened here: how something is counted or labelled changed
+          between two releases, so placing the two numbers side by side would mislead.
+        </p>
+        <p>How to settle it: ask the publisher which definition is current, and only compare releases that use the same ruler.</p>
+      </SimpleWords>
     </div>
   );
 }
@@ -178,6 +209,16 @@ export function ContradictionPayloadView({ finding }: { finding: ContradictionFi
           ))}
         </ul>
       </div>
+
+      <SimpleWords>
+        <p>
+          Two newspapers report different cricket scores for the same match: {va.toLocaleString("en-IN")} vs{" "}
+          {vb.toLocaleString("en-IN")}. Maybe one counted practice overs, maybe one is from last week, maybe one simply
+          typed it wrong. This flag says the two totals don&apos;t sit together comfortably, and lists the checks above
+          (same place? same time? same unit?) so you can find which reason fits.
+        </p>
+        <p>How to settle it: open both files, confirm they cover the same place, period, and unit, then ask the publisher about the gap.</p>
+      </SimpleWords>
     </div>
   );
 }
@@ -234,6 +275,17 @@ export function BenfordPayloadView({ finding }: { finding: BenfordFinding }) {
           <p className="text-sm leading-relaxed text-[var(--foreground-muted)]">This is a screening signal, not proof of a problem. It doesn&apos;t apply to IDs, phone numbers, or dates, and it&apos;s worth checking what this column actually means before acting on it.</p>
         </div>
       )}
+
+      <SimpleWords>
+        <p>
+          Look at the bills in any real shop: amounts starting with 1 (like ₹12, ₹150) appear far more often than
+          amounts starting with 9. That is just how real, unplanned numbers behave. In this column, the starting digits
+          don&apos;t follow that natural shape across {finding.n_values.toLocaleString("en-IN")} numbers, so the column
+          is worth a human look. It may be perfectly fine (some real data looks like this), or somebody&apos;s entries
+          may need checking.
+        </p>
+        <p>How to settle it: open the exact rows below, read a few values yourself, and confirm what this column actually records.</p>
+      </SimpleWords>
     </div>
   );
 }
@@ -259,6 +311,15 @@ export function ConsensusPayloadView({ finding }: { finding: ConsensusFinding })
           <Row key={group.origin_artifact_id} label={<HashText hash={group.origin_artifact_id} />} value={<span className="text-sm text-[var(--foreground-muted)]">{group.members.length} report(s) trace here</span>} />
         ))}
       </div>
+
+      <SimpleWords>
+        <p>
+          Ten friends all tell you the same news, but all ten heard it from the same one neighbour. It feels confirmed
+          ten times, but it is really one story. That is what happened here: {finding.apparent_sources} report(s) boil
+          down to {finding.distinct_origins} original source(s).
+        </p>
+        <p>How to settle it: treat it as a single report until a genuinely independent source says the same thing.</p>
+      </SimpleWords>
     </div>
   );
 }

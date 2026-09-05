@@ -57,26 +57,32 @@ export default function AskPage() {
 
   useEffect(() => {
     listArtifacts().then((res) => setArtifacts(res.items)).catch(() => {});
-    // Deep link from a finding: ?q=<question>&scope=<id,id> prefills it.
+    // Deep link from a finding: ?q=<question>&scope=<id,id> asks it at once.
     const qs = new URLSearchParams(window.location.search);
     const q = qs.get("q") ?? "";
-    if (q) setQuestion(q);
     const scope = (qs.get("scope") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
     if (scope.length) setScopeIds(scope);
+    if (q) {
+      setQuestion(q);
+      window.history.replaceState(null, "", "/ask");
+      const timer = setTimeout(() => submitRef.current(q, scope), 400);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [turns.length, busy]);
 
-  async function submit(q?: string) {
+  async function submit(q?: string, scope?: string[]) {
     const text = (q ?? question).trim();
     if (!text || busy) return;
     setQuestion("");
     setError(null);
     setBusy(true);
     try {
-      const res = await askDetective(text, scopeIds.length ? scopeIds : undefined);
+      const ids = scope ?? scopeIds;
+      const res = await askDetective(text, ids.length ? ids : undefined);
       setTurns((prev) => [...prev, { ...res, at: new Date().toISOString() }]);
     } catch (e) {
       setError((e as Error).message);
@@ -84,6 +90,8 @@ export default function AskPage() {
       setBusy(false);
     }
   }
+  const submitRef = useRef(submit);
+  submitRef.current = submit;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -144,7 +152,7 @@ export default function AskPage() {
                   </button>
                 ))}
               </div>
-              <p className="mt-3 text-xs text-[var(--foreground-faint)]">Tip: click the [E1], [E2] tags in an answer to see its source.</p>
+              <p className="mt-3 text-xs text-[var(--foreground-faint)]">Tip: click the [E1], [E2] tags in an answer to see its source. The first answer can take up to a minute while the server wakes up.</p>
             </Panel>
           </motion.div>
         )}
