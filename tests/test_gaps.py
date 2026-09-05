@@ -25,6 +25,59 @@ def test_rolling_baseline_flags_spike_but_ignores_flat() -> None:
     assert short == []  # not enough prior points to judge
 
 
+def test_force_reingest_replaces_row(api: TestClient) -> None:
+    from conftest import wait_job
+
+    csv = "district,value\nA,1\nB,2\n"
+    first = api.post(
+        "/artifacts/ingest",
+        params={"artifact_id": "art_force", "source_id": "SRC-TEST"},
+        files={"file": ("d.csv", io.BytesIO(csv.encode()), "text/csv")},
+    )
+    assert first.status_code == 202, first.text
+    wait_job(api, first.json()["job_id"])
+
+    clash = api.post(
+        "/artifacts/ingest",
+        params={"artifact_id": "art_force", "source_id": "SRC-TEST"},
+        files={"file": ("d.csv", io.BytesIO(csv.encode()), "text/csv")},
+    )
+    assert clash.status_code == 409
+
+    forced = api.post(
+        "/artifacts/ingest",
+        params={"artifact_id": "art_force", "source_id": "SRC-TEST", "force": "true"},
+        files={"file": ("d.csv", io.BytesIO(b"district,value\nA,5\nB,6\n"), "text/csv")},
+    )
+    assert forced.status_code == 202, forced.text
+    job = wait_job(api, forced.json()["job_id"])
+    assert job["status"] == "done", job
+    assert job["result"]["rows"] == 2
+
+
+def test_seed_repairs_missing_raw(api: TestClient) -> None:
+    import os
+
+    from bdd_api.db import ArtifactRow, db_session
+    from bdd_api.seed import seed_demo
+
+    first = seed_demo()
+    assert len(first["seeded"]) == 6
+
+    with db_session() as session:
+        row = session.get(ArtifactRow, "art-demo-micro-1920")
+        assert row is not None
+        os.remove(row.raw_uri)
+
+    second = seed_demo()
+    assert "art-demo-micro-1920" in second["repaired"]
+    assert "art-demo-micro-1920" not in second["skipped"]
+
+    with db_session() as session:
+        row = session.get(ArtifactRow, "art-demo-micro-1920")
+        assert row is not None and os.path.exists(row.raw_uri)
+
+
 def test_stale_jobs_recovered_as_failed(api: TestClient) -> None:
     from bdd_api.jobs import create_job, get_job, recover_stale_jobs
 

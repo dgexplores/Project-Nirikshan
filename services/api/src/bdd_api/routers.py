@@ -73,12 +73,19 @@ async def ingest_artifact(
     source_id: str = Query(..., min_length=2, max_length=128),
     title: str | None = Query(default=None, max_length=300),
     release_date: str | None = Query(default=None, description="Release/period label e.g. FY 2024-25"),
+    force: bool = Query(default=False, description="Replace the existing artifact row (findings keep stable ids)"),
 ) -> IngestAccepted:
     validate_upload_filename(file.filename or "")
     settings = get_settings()
 
     with db_session() as session:
-        exists = session.get(ArtifactRow, artifact_id) is not None
+        existing = session.get(ArtifactRow, artifact_id)
+        if existing is not None and force:
+            session.delete(existing)
+            session.commit()
+            exists = False
+        else:
+            exists = existing is not None
     with _INFLIGHT_LOCK:
         if exists or artifact_id in _INFLIGHT:
             raise ConflictError("artifact_exists", f"artifact {artifact_id} already exists")

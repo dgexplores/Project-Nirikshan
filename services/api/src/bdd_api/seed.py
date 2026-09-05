@@ -168,13 +168,17 @@ def seed_demo() -> dict[str, Any]:
 
     seeded: list[str] = []
     skipped: list[str] = []
+    repaired: list[str] = []
     reporter = SilentStepReporter()
 
     for spec in FIXTURES:
         artifact_id = spec["artifact_id"]
         with db_session() as session:
-            exists = session.get(ArtifactRow, artifact_id) is not None
-        if exists:
+            row = session.get(ArtifactRow, artifact_id)
+        # Ephemeral disks (Render free tier) lose /data/raw on redeploy while
+        # Postgres rows survive. Re-freeze any demo artifact whose raw is gone.
+        raw_missing = row is not None and not Path(row.raw_uri).exists()
+        if row is not None and not raw_missing:
             skipped.append(artifact_id)
             continue
         path = fixtures_dir / spec["filename"]
@@ -189,7 +193,7 @@ def seed_demo() -> dict[str, Any]:
             reporter=reporter,
         )
         run_anomalies(artifact_id)
-        seeded.append(artifact_id)
+        (repaired if raw_missing else seeded).append(artifact_id)
 
     findings_written = 0
 
@@ -234,7 +238,7 @@ def seed_demo() -> dict[str, Any]:
                 None,
             )
 
-    return {"seeded": seeded, "skipped": skipped, "new_findings": findings_written}
+    return {"seeded": seeded, "skipped": skipped, "repaired": repaired, "new_findings": findings_written}
 
 
 def _exists(artifact_id: str) -> bool:
