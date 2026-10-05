@@ -11,6 +11,7 @@
 | | |
 |---|---|
 | **Live dashboard** | https://web-tau-sandy-60.vercel.app |
+| **Demo video (53s)** | [`docs/nirikshan-demo.mp4`](docs/nirikshan-demo.mp4) — narrated walkthrough, real app screens |
 | **Run it locally** | `git clone https://github.com/dgexplores/Project-Nirikshan.git && cd Project-Nirikshan && docker compose -f infra/docker/compose.yml up --build` → http://localhost:3000 |
 
 > One honest note: the free API hosting this demo ran on has ended, so the live dashboard shows an offline notice with these same local-run steps. Everything below runs locally in one command — no keys, no paid services.
