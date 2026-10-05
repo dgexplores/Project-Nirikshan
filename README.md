@@ -39,7 +39,7 @@ Upload any CSV/Excel → frozen with SHA-256 → 5 checks run (**drift, anomaly,
 |---|---|
 | Forensic engines | 5 (drift, anomaly, contradiction, false consensus, Benford) |
 | Real govt datasets ingested | 4, from data.gov.in and nrega.nic.in |
-| Real findings from real data | 85 of 106 (66 anomaly, 16 Benford, 3 contradiction) |
+| Real findings from real data | 80 (63 anomaly, 17 Benford), 85 total live |
 | Backend tests | **168 passing, 0 failing** (`uv run pytest`) |
 | Strongest real finding | **Mohali school enrollment hits 145% of capacity by 2022** (z-score 3.78 vs peers) |
 | Ask Detective | Hindi + English, every answer cited `[E1]` or honestly refused |
