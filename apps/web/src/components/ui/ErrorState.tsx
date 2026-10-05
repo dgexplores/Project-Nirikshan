@@ -1,7 +1,7 @@
 import { BACKEND_DOWN } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-const REPO = "https://github.com/dgexplores/bharat-data-detective";
+const REPO = "https://github.com/dgexplores/Project-Nirikshan";
 
 function WarningIcon({ className }: { className?: string }) {
   return (
@@ -51,7 +51,7 @@ function BackendOffline({ onRetry, className }: { onRetry?: () => void; classNam
       <div className="mx-auto mt-5 max-w-[62ch] overflow-x-auto rounded-xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-left">
         <code className="hash whitespace-pre text-xs leading-relaxed text-[var(--foreground-muted)]">
           git clone {REPO}.git{"\n"}
-          cd bharat-data-detective{"\n"}
+          cd Project-Nirikshan{"\n"}
           docker compose -f infra/docker/compose.yml up --build
         </code>
       </div>
