@@ -21,7 +21,7 @@ services:
       # psycopg dialect SQLAlchemy needs, so it can be used verbatim.
       - key: BDD_DATABASE_URL
         fromDatabase:
-          name: bdd-db
+          name: bdd-db2
           property: connectionString
       - key: BDD_RAW_STORE
         value: /data/raw
@@ -32,7 +32,7 @@ services:
       - key: BDD_CORS_ORIGINS
         value: https://web-tau-sandy-60.vercel.app,http://localhost:3000
 databases:
-  - name: bdd-db
+  - name: bdd-db2
     plan: free
-    databaseName: bdd
-    user: bdd
+    databaseName: bdd_db2
+    user: bdd_db2_user
