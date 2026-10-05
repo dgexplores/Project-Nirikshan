@@ -114,8 +114,37 @@ class Engine:
 
         self.session_factory = sessionmaker(bind=self.engine, expire_on_commit=False, future=True)
 
-    def create_all(self) -> None:
-        Base.metadata.create_all(self.engine)
+    def create_all(self, retries: int = 6, backoff_s: float = 5.0) -> None:
+        """Create tables, retrying transient connection failures.
+
+        A fresh deploy often boots before its database accepts connections
+        (managed DB waking from sleep, compose ordering, DNS propagation).
+        Crash-looping on the first refused connection turns a 20-second
+        blip into a failed deploy, so retry with a bounded backoff, then
+        raise the last error so the platform keeps the previous revision.
+        """
+        import time
+
+        import sqlalchemy.exc
+
+        last_error: Exception | None = None
+        for attempt in range(1, retries + 1):
+            try:
+                Base.metadata.create_all(self.engine)
+                return
+            except (sqlalchemy.exc.DBAPIError, OSError) as exc:
+                last_error = exc
+                logger.warning(
+                    "database not reachable (attempt %d/%d): %s",
+                    attempt,
+                    retries,
+                    exc,
+                )
+                if attempt < retries:
+                    time.sleep(backoff_s)
+        raise RuntimeError(
+            f"database unreachable after {retries} attempts; refusing to boot"
+        ) from last_error
 
     def ping(self) -> bool:
         try:
