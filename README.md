@@ -1,5 +1,7 @@
 # Bharat Data Detective (BDD)
 
+[![CI](https://github.com/dgexplores/Project-Nirikshan/actions/workflows/ci.yml/badge.svg)](https://github.com/dgexplores/Project-Nirikshan/actions)
+
 **AI forensic layer for Indian public data.** Flags inconsistencies in government datasets for human review — never declares anyone "wrong".
 
 > Built for **UNLEASH LLM, Responsible AI, Rooted in India** (India-First Dataset Track via AIKosh) · Made by **Vaibhava** and **Deepak Gangwar**
